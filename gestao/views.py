@@ -4,9 +4,14 @@ from decimal import Decimal
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import F, Q
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.views.decorators.http import require_POST
 
 from .forms import ProdutoForm, ProdutoEdicaoForm, ClienteForm
 from .models import Cliente, Produto, Venda, ItemVenda, MovimentoCaixa
+from django.db import transaction
+
+from .forms import VendaForm, ItemVendaFormSet
 
 
 @staff_member_required
@@ -232,3 +237,148 @@ def editar_cliente(request, pk):
             "editando": True,
         },
     )
+@staff_member_required
+def lista_vendas(request):
+    busca = request.GET.get("busca", "").strip()
+
+    vendas = (
+        Venda.objects
+        .select_related("cliente")
+        .prefetch_related("itens")
+        .order_by("-data", "-id")
+    )
+
+    if busca:
+        filtro = Q(cliente__nome__icontains=busca)
+
+        if busca.isdigit():
+            filtro |= Q(pk=int(busca))
+
+        vendas = vendas.filter(filtro)
+
+    for venda in vendas:
+        venda.total_calculado = sum(
+            (
+                item.quantidade * item.preco_unitario
+                for item in venda.itens.all()
+            ),
+            Decimal("0.00"),
+        )
+
+    return render(
+        request,
+        "gestao/vendas.html",
+        {
+            "vendas": vendas,
+            "busca": busca,
+        },
+    )
+@staff_member_required
+def nova_venda(request):
+    venda = Venda()
+
+    if request.method == "POST":
+        form = VendaForm(request.POST, instance=venda)
+
+        formset = ItemVendaFormSet(
+            request.POST,
+            instance=venda,
+            prefix="itens",
+        )
+
+        form_valido = form.is_valid()
+        itens_validos = formset.is_valid()
+
+        if form_valido and itens_validos:
+            with transaction.atomic():
+                venda = form.save()
+                formset.instance = venda
+                formset.save()
+
+            return redirect("lista_vendas")
+
+    else:
+        form = VendaForm(instance=venda)
+
+        formset = ItemVendaFormSet(
+            instance=venda,
+            prefix="itens",
+        )
+
+    return render(
+        request,
+        "gestao/venda_form.html",
+        {
+            "form": form,
+            "formset": formset,
+        },
+    )
+@staff_member_required
+@require_POST
+def confirmar_venda(request, pk):
+    get_object_or_404(Venda, pk=pk)
+
+    try:
+        with transaction.atomic():
+            alteradas = Venda.objects.filter(
+                pk=pk,
+                confirmada=False,
+            ).update(confirmada=True)
+
+            if not alteradas:
+                messages.warning(
+                    request,
+                    f"Venda {pk} já estava confirmada.",
+                )
+                return redirect("lista_vendas")
+
+            itens = list(
+                ItemVenda.objects.filter(venda_id=pk)
+            )
+
+            if not itens:
+                raise ValueError("A venda não tem produtos.")
+
+            quantidades = {}
+
+            for item in itens:
+                if item.quantidade < 1 or item.preco_unitario <= 0:
+                    raise ValueError(
+                        "Quantidade e preço devem ser positivos."
+                    )
+
+                quantidades[item.produto_id] = (
+                    quantidades.get(item.produto_id, 0)
+                    + item.quantidade
+                )
+
+            for produto_id, quantidade in sorted(
+                quantidades.items()
+            ):
+                atualizados = Produto.objects.filter(
+                    pk=produto_id,
+                    estoque__gte=quantidade,
+                ).update(
+                    estoque=F("estoque") - quantidade
+                )
+
+                if not atualizados:
+                    produto = Produto.objects.get(pk=produto_id)
+
+                    raise ValueError(
+                        f"Estoque insuficiente para {produto.nome}."
+                    )
+
+    except ValueError as erro:
+        messages.error(
+            request,
+            f"Venda {pk} não confirmada: {erro}",
+        )
+
+    else:
+        messages.success(
+            request,
+            f"Venda {pk} confirmada. Estoque atualizado.",
+        )
+
+    return redirect("lista_vendas")

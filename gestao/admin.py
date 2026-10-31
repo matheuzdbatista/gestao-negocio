@@ -4,8 +4,13 @@ from django.contrib import admin, messages
 from django.db import transaction
 from django.db.models import F
 
-from .models import Produto, Cliente, Venda, ItemVenda
-from .models import MovimentoCaixa
+from .models import (
+    Produto,
+    Cliente,
+    Venda,
+    ItemVenda,
+    MovimentoCaixa,
+)
 
 
 @admin.register(Produto)
@@ -38,7 +43,13 @@ class ItemVendaInline(admin.TabularInline):
 
 @admin.register(Venda)
 class VendaAdmin(admin.ModelAdmin):
-    list_display = ("id", "cliente", "data", "total", "confirmada")
+    list_display = (
+        "id",
+        "cliente",
+        "data",
+        "total",
+        "confirmada",
+    )
     list_filter = ("confirmada", "data")
     search_fields = ("cliente__nome",)
     inlines = [ItemVendaInline]
@@ -53,15 +64,20 @@ class VendaAdmin(admin.ModelAdmin):
             ),
             Decimal("0.00"),
         )
+
         return f"{valor:.2f}".replace(".", ",")
 
     def has_change_permission(self, request, obj=None):
         if obj and obj.confirmada:
             return False
+
         return super().has_change_permission(request, obj)
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        if obj is None or obj.confirmada:
+            return False
+
+        return super().has_delete_permission(request, obj)
 
     @admin.action(
         description="Confirmar vendas e baixar estoque",
@@ -89,12 +105,17 @@ class VendaAdmin(admin.ModelAdmin):
                     )
 
                     if not itens:
-                        raise ValueError("A venda não tem produtos.")
+                        raise ValueError(
+                            "A venda não tem produtos."
+                        )
 
                     quantidades = {}
 
                     for item in itens:
-                        if item.quantidade < 1 or item.preco_unitario <= 0:
+                        if (
+                            item.quantidade < 1
+                            or item.preco_unitario <= 0
+                        ):
                             raise ValueError(
                                 "Quantidade e preço devem ser positivos."
                             )
@@ -110,12 +131,18 @@ class VendaAdmin(admin.ModelAdmin):
                         atualizados = Produto.objects.filter(
                             pk=produto_id,
                             estoque__gte=quantidade,
-                        ).update(estoque=F("estoque") - quantidade)
+                        ).update(
+                            estoque=F("estoque") - quantidade
+                        )
 
                         if not atualizados:
-                            produto = Produto.objects.get(pk=produto_id)
+                            produto = Produto.objects.get(
+                                pk=produto_id
+                            )
+
                             raise ValueError(
-                                f"Estoque insuficiente para {produto.nome}."
+                                "Estoque insuficiente para "
+                                f"{produto.nome}."
                             )
 
             except ValueError as erro:
@@ -124,12 +151,15 @@ class VendaAdmin(admin.ModelAdmin):
                     f"Venda {venda_id} não confirmada: {erro}",
                     level=messages.ERROR,
                 )
+
             else:
                 self.message_user(
                     request,
                     f"Venda {venda_id} confirmada. Estoque atualizado.",
                     level=messages.SUCCESS,
                 )
+
+
 @admin.register(MovimentoCaixa)
 class MovimentoCaixaAdmin(admin.ModelAdmin):
     list_display = ("descricao", "tipo", "valor", "data")

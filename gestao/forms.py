@@ -4,6 +4,10 @@ from django import forms
 
 from .models import Produto, Cliente
 
+from django.forms import inlineformset_factory
+
+from .models import Venda, ItemVenda
+
 
 class ProdutoForm(forms.ModelForm):
     class Meta:
@@ -76,3 +80,36 @@ class ClienteForm(forms.ModelForm):
                 attrs={"placeholder": "Ex.: cliente@example.com"}
             ),
         }
+class VendaForm(forms.ModelForm):
+    class Meta:
+        model = Venda
+        fields = ["cliente"]
+        labels = {
+            "cliente": "Cliente (opcional)",
+        }
+
+
+ItemVendaFormSet = inlineformset_factory(
+    Venda,
+    ItemVenda,
+    fields=["produto", "quantidade", "preco_unitario"],
+    labels={
+        "produto": "Produto",
+        "quantidade": "Quantidade",
+        "preco_unitario": "Preço unitário (R$)",
+    },
+    widgets={
+        "quantidade": forms.NumberInput(
+            attrs={"min": "1"}
+        ),
+        "preco_unitario": forms.NumberInput(
+            attrs={"min": "0.01", "step": "0.01"}
+        ),
+    },
+    extra=2,
+    min_num=1,
+    validate_min=True,
+    max_num=20,
+    validate_max=True,
+    can_delete=False,
+)

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vendas | Painel de Gestão</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #f3f5f9;
+            color: #1e293b;
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: auto;
+            padding: 32px 20px;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .descricao {
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        nav,
+        .pesquisa {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        .botao {
+            display: inline-block;
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 8px;
+            background: #1d4ed8;
+            color: white;
+            text-decoration: none;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .botao:hover {
+            background: #1e40af;
+        }
+
+        .secundario {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .secundario:hover {
+            background: #cbd5e1;
+        }
+
+        input {
+            width: 280px;
+            max-width: 100%;
+            padding: 12px;
+            border: 1px solid #94a3b8;
+            border-radius: 8px;
+            background: white;
+            color: #1e293b;
+            font: inherit;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible {
+            outline: 3px solid #1e293b;
+            outline-offset: 3px;
+        }
+
+        .painel {
+            padding: 24px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: white;
+        }
+
+        .tabela {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 14px 10px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            color: #475569;
+        }
+
+        .confirmada {
+            color: #166534;
+            font-weight: bold;
+        }
+
+        .pendente {
+            color: #9a3412;
+            font-weight: bold;
+        }
+
+        .acao-venda {
+            margin: 0;
+        }
+
+        .mensagem {
+            padding: 16px;
+            margin: 16px 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: white;
+            line-height: 1.5;
+        }
+
+        .mensagem.success {
+            background: #f0fdf4;
+            border-color: #86efac;
+            color: #166534;
+        }
+
+        .mensagem.error {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #991b1b;
+        }
+
+        .mensagem.warning {
+            background: #fffbeb;
+            border-color: #fcd34d;
+            color: #92400e;
+        }
+
+        @media (max-width: 480px) {
+            main {
+                padding: 20px 14px;
+            }
+
+            .painel {
+                padding: 16px;
+            }
+
+            input {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Vendas</h1>
+
+        <p class="descricao">
+            Consulte as vendas registradas e confirme a baixa do estoque.
+            Confirmar uma venda não registra seu recebimento no caixa.
+        </p>
+
+        <nav aria-label="Navegação">
+            <a class="botao" href="{% url 'nova_venda' %}">
+                Nova venda
+            </a>
+
+            <a
+                class="botao secundario"
+                href="{% url 'dashboard' %}"
+            >
+                Voltar ao dashboard
+            </a>
+
+            <a
+                class="botao secundario"
+                href="{% url 'admin:gestao_venda_changelist' %}"
+            >
+                Gerenciar no painel
+            </a>
+        </nav>
+
+        <form
+            class="pesquisa"
+            method="get"
+            action="{% url 'lista_vendas' %}"
+            aria-label="Pesquisa de vendas"
+        >
+            <label for="busca">Número da venda ou cliente:</label>
+
+            <input
+                type="search"
+                id="busca"
+                name="busca"
+                value="{{ busca }}"
+                placeholder="Ex.: 1 ou Matheus"
+            >
+
+            <button class="botao" type="submit">
+                Pesquisar
+            </button>
+
+            <a
+                class="botao secundario"
+                href="{% url 'lista_vendas' %}"
+            >
+                Limpar
+            </a>
+        </form>
+
+        {% for mensagem in messages %}
+            <p class="mensagem {{ mensagem.tags }}" role="status">
+                {{ mensagem }}
+            </p>
+        {% endfor %}
+
+        <section class="painel" aria-label="Lista de vendas">
+            {% if vendas %}
+                <div class="tabela">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Número</th>
+                                <th scope="col">Cliente</th>
+                                <th scope="col">Data</th>
+                                <th scope="col">Total</th>
+                                <th scope="col">Situação</th>
+                                <th scope="col">Ações</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for venda in vendas %}
+                                <tr>
+                                    <td>{{ venda.pk }}</td>
+
+                                    <td>
+                                        {{ venda.cliente|default:"Não informado" }}
+                                    </td>
+
+                                    <td>
+                                        {{ venda.data|date:"d/m/Y H:i" }}
+                                    </td>
+
+                                    <td>
+                                        R$ {{ venda.total_calculado|floatformat:2 }}
+                                    </td>
+
+                                    <td>
+                                        {% if venda.confirmada %}
+                                            <span class="confirmada">
+                                                Confirmada
+                                            </span>
+                                        {% else %}
+                                            <span class="pendente">
+                                                Não confirmada
+                                            </span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if not venda.confirmada %}
+                                            <form
+                                                class="acao-venda"
+                                                method="post"
+                                                action="{% url 'confirmar_venda' venda.pk %}"
+                                            >
+                                                {% csrf_token %}
+
+                                                <button
+                                                    class="botao"
+                                                    type="submit"
+                                                    aria-label="Confirmar venda {{ venda.pk }}"
+                                                >
+                                                    Confirmar venda
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                {% if busca %}
+                    <p>
+                        Nenhuma venda encontrada para “{{ busca }}”.
+                    </p>
+                {% else %}
+                    <p>Nenhuma venda cadastrada.</p>
+                {% endif %}
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>
