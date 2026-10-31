@@ -4,8 +4,8 @@ from decimal import Decimal
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import F, Q
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import ProdutoForm, ProdutoEdicaoForm
 
+from .forms import ProdutoForm, ProdutoEdicaoForm, ClienteForm
 from .models import Cliente, Produto, Venda, ItemVenda, MovimentoCaixa
 
 
@@ -58,20 +58,14 @@ def dashboard(request):
     )
 
     entradas = sum(
-        movimentos.filter(
-            tipo="entrada"
-        ).values_list("valor", flat=True),
+        movimentos.filter(tipo="entrada").values_list("valor", flat=True),
         Decimal("0.00"),
     )
 
     saidas = sum(
-        movimentos.filter(
-            tipo="saida"
-        ).values_list("valor", flat=True),
+        movimentos.filter(tipo="saida").values_list("valor", flat=True),
         Decimal("0.00"),
     )
-
-    saldo = entradas - saidas
 
     estoque_baixo = Produto.objects.filter(
         estoque__lte=F("estoque_minimo")
@@ -79,19 +73,15 @@ def dashboard(request):
 
     if erro:
         periodo = "Período inválido — corrija as datas"
-
     elif inicio and fim:
         periodo = (
             f"De {inicio.strftime('%d/%m/%Y')} "
             f"até {fim.strftime('%d/%m/%Y')}"
         )
-
     elif inicio:
         periodo = f"A partir de {inicio.strftime('%d/%m/%Y')}"
-
     elif fim:
         periodo = f"Até {fim.strftime('%d/%m/%Y')}"
-
     else:
         periodo = "Todo o período"
 
@@ -103,7 +93,7 @@ def dashboard(request):
         "estoque_baixo": estoque_baixo,
         "entradas": entradas,
         "saidas": saidas,
-        "saldo": saldo,
+        "saldo": entradas - saidas,
         "inicio": inicio_texto,
         "fim": fim_texto,
         "periodo": periodo,
@@ -116,7 +106,6 @@ def dashboard(request):
 @staff_member_required
 def lista_produtos(request):
     busca = request.GET.get("busca", "").strip()
-
     produtos = Produto.objects.all().order_by("nome", "id")
 
     if busca:
@@ -125,12 +114,16 @@ def lista_produtos(request):
             | Q(codigo__icontains=busca)
         )
 
-    contexto = {
-        "produtos": produtos,
-        "busca": busca,
-    }
+    return render(
+        request,
+        "gestao/produtos.html",
+        {
+            "produtos": produtos,
+            "busca": busca,
+        },
+    )
 
-    return render(request, "gestao/produtos.html", contexto)
+
 @staff_member_required
 def novo_produto(request):
     if request.method == "POST":
@@ -139,15 +132,19 @@ def novo_produto(request):
         if form.is_valid():
             form.save()
             return redirect("lista_produtos")
-
     else:
         form = ProdutoForm()
 
     return render(
         request,
         "gestao/produto_form.html",
-        {"form": form},
+        {
+            "form": form,
+            "editando": False,
+        },
     )
+
+
 @staff_member_required
 def editar_produto(request, pk):
     produto = get_object_or_404(Produto, pk=pk)
@@ -158,13 +155,78 @@ def editar_produto(request, pk):
         if form.is_valid():
             form.save()
             return redirect("lista_produtos")
-
     else:
         form = ProdutoEdicaoForm(instance=produto)
 
     return render(
         request,
         "gestao/produto_form.html",
+        {
+            "form": form,
+            "editando": True,
+        },
+    )
+
+
+@staff_member_required
+def lista_clientes(request):
+    busca = request.GET.get("busca", "").strip()
+    clientes = Cliente.objects.all().order_by("nome", "id")
+
+    if busca:
+        clientes = clientes.filter(
+            Q(nome__icontains=busca)
+            | Q(telefone__icontains=busca)
+            | Q(email__icontains=busca)
+        )
+
+    return render(
+        request,
+        "gestao/clientes.html",
+        {
+            "clientes": clientes,
+            "busca": busca,
+        },
+    )
+
+
+@staff_member_required
+def novo_cliente(request):
+    if request.method == "POST":
+        form = ClienteForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+            return redirect("lista_clientes")
+    else:
+        form = ClienteForm()
+
+    return render(
+        request,
+        "gestao/cliente_form.html",
+        {
+            "form": form,
+            "editando": False,
+        },
+    )
+
+
+@staff_member_required
+def editar_cliente(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+
+    if request.method == "POST":
+        form = ClienteForm(request.POST, instance=cliente)
+
+        if form.is_valid():
+            form.save()
+            return redirect("lista_clientes")
+    else:
+        form = ClienteForm(instance=cliente)
+
+    return render(
+        request,
+        "gestao/cliente_form.html",
         {
             "form": form,
             "editando": True,

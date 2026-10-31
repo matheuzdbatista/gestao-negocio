@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>
+        {% if editando %}Editar cliente{% else %}Novo cliente{% endif %}
+        | Painel de Gestão
+    </title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #f3f5f9;
+            color: #1e293b;
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            max-width: 650px;
+            margin: auto;
+            padding: 32px 20px;
+        }
+
+        .descricao {
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        form {
+            margin-top: 24px;
+            padding: 24px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+        }
+
+        .campo {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #94a3b8;
+            border-radius: 8px;
+            font: inherit;
+        }
+
+        .acoes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .botao {
+            display: inline-block;
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 8px;
+            background: #1d4ed8;
+            color: white;
+            font: inherit;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .botao:hover {
+            background: #1e40af;
+        }
+
+        .secundario {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .secundario:hover {
+            background: #cbd5e1;
+        }
+
+        .errorlist {
+            color: #b91c1c;
+            padding-left: 20px;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible {
+            outline: 3px solid #1e293b;
+            outline-offset: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>
+            {% if editando %}
+                Editar cliente
+            {% else %}
+                Novo cliente
+            {% endif %}
+        </h1>
+
+        <p class="descricao">
+            Nome é obrigatório. Telefone e e-mail são opcionais.
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+
+            {{ form.non_field_errors }}
+
+            {% for campo in form %}
+                <div class="campo">
+                    {{ campo.label_tag }}
+                    {{ campo }}
+                    {{ campo.errors }}
+                </div>
+            {% endfor %}
+
+            <div class="acoes">
+                <button class="botao" type="submit">
+                    {% if editando %}
+                        Salvar alterações
+                    {% else %}
+                        Salvar cliente
+                    {% endif %}
+                </button>
+
+                <a
+                    class="botao secundario"
+                    href="{% url 'lista_clientes' %}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </main>
+</body>
+</html>

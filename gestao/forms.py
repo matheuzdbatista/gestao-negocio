@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django import forms
 
-from .models import Produto
+from .models import Produto, Cliente
 
 
 class ProdutoForm(forms.ModelForm):
@@ -53,3 +53,26 @@ class ProdutoEdicaoForm(ProdutoForm):
             "preco",
             "estoque_minimo",
         ]
+
+
+class ClienteForm(forms.ModelForm):
+    class Meta:
+        model = Cliente
+        fields = [
+            "nome",
+            "telefone",
+            "email",
+        ]
+        labels = {
+            "nome": "Nome",
+            "telefone": "Telefone",
+            "email": "E-mail",
+        }
+        widgets = {
+            "telefone": forms.TextInput(
+                attrs={"placeholder": "Ex.: (11) 99999-9999"}
+            ),
+            "email": forms.EmailInput(
+                attrs={"placeholder": "Ex.: cliente@example.com"}
+            ),
+        }

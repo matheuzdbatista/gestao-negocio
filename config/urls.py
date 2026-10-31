@@ -6,6 +6,9 @@ from gestao.views import (
     lista_produtos,
     novo_produto,
     editar_produto,
+    lista_clientes,
+    novo_cliente,
+    editar_cliente,
 )
 
 
@@ -18,5 +21,12 @@ urlpatterns = [
         "produtos/<int:pk>/editar/",
         editar_produto,
         name="editar_produto",
+    ),
+    path("clientes/", lista_clientes, name="lista_clientes"),
+    path("clientes/novo/", novo_cliente, name="novo_cliente"),
+    path(
+        "clientes/<int:pk>/editar/",
+        editar_cliente,
+        name="editar_cliente",
     ),
 ]
