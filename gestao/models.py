@@ -7,12 +7,19 @@ from django.db import models
 
 class Produto(models.Model):
     nome = models.CharField(max_length=100)
-    codigo = models.CharField(max_length=30, unique=True)
+
+    codigo = models.CharField(
+        max_length=30,
+        unique=True,
+    )
+
     preco = models.DecimalField(
         max_digits=10,
         decimal_places=2,
     )
+
     estoque = models.PositiveIntegerField(default=0)
+
     estoque_minimo = models.PositiveIntegerField(default=5)
 
     def __str__(self):
@@ -21,10 +28,12 @@ class Produto(models.Model):
 
 class Cliente(models.Model):
     nome = models.CharField(max_length=100)
+
     telefone = models.CharField(
         max_length=20,
         blank=True,
     )
+
     email = models.EmailField(blank=True)
 
     def __str__(self):
@@ -38,7 +47,9 @@ class Venda(models.Model):
         null=True,
         blank=True,
     )
+
     data = models.DateTimeField(auto_now_add=True)
+
     confirmada = models.BooleanField(
         default=False,
         editable=False,
@@ -48,16 +59,19 @@ class Venda(models.Model):
         default=False,
         editable=False,
     )
+
     motivo_cancelamento = models.CharField(
         max_length=200,
         blank=True,
         editable=False,
     )
+
     data_cancelamento = models.DateTimeField(
         null=True,
         blank=True,
         editable=False,
     )
+
     cancelada_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -80,18 +94,23 @@ class ItemVenda(models.Model):
         on_delete=models.CASCADE,
         related_name="itens",
     )
+
     produto = models.ForeignKey(
         Produto,
         on_delete=models.PROTECT,
     )
+
     quantidade = models.PositiveIntegerField(
         default=1,
         validators=[MinValueValidator(1)],
     )
+
     preco_unitario = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        validators=[MinValueValidator(Decimal("0.01"))],
+        validators=[
+            MinValueValidator(Decimal("0.01")),
+        ],
     )
 
     def __str__(self):
@@ -108,16 +127,30 @@ class MovimentoCaixa(models.Model):
         "descrição",
         max_length=150,
     )
+
     tipo = models.CharField(
         max_length=7,
         choices=TIPOS,
     )
+
     valor = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        validators=[MinValueValidator(Decimal("0.01"))],
+        validators=[
+            MinValueValidator(Decimal("0.01")),
+        ],
     )
+
     data = models.DateField("data do movimento")
+
+    venda = models.ForeignKey(
+        "Venda",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="movimentos_caixa",
+        verbose_name="venda vinculada",
+    )
 
     class Meta:
         verbose_name = "movimento de caixa"
@@ -134,11 +167,15 @@ class EntradaEstoque(models.Model):
         on_delete=models.PROTECT,
         related_name="entradas_estoque",
     )
+
     quantidade = models.PositiveIntegerField(
         validators=[MinValueValidator(1)],
     )
+
     motivo = models.CharField(max_length=200)
+
     data = models.DateTimeField(auto_now_add=True)
+
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

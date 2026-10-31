@@ -1,8 +1,9 @@
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
-
 from .models import Produto, Venda, ItemVenda
+from decimal import Decimal
+from .models import MovimentoCaixa
 
 
 def cancelar_venda_com_estoque(venda_id, usuario, motivo):
@@ -74,3 +75,86 @@ def cancelar_venda_com_estoque(venda_id, usuario, motivo):
                 raise ValueError(
                     "Um produto da venda não foi encontrado."
                 )
+def registrar_recebimento_venda(venda_id, valor, data):
+    if not isinstance(valor, Decimal):
+        raise ValueError("Informe um valor monetário válido.")
+
+    if not valor.is_finite() or valor <= Decimal("0.00"):
+        raise ValueError("O valor recebido deve ser maior que zero.")
+
+    if valor != valor.quantize(Decimal("0.01")):
+        raise ValueError("Informe um valor com até duas casas decimais.")
+
+    if valor > Decimal("99999999.99"):
+        raise ValueError("O valor informado ultrapassa o limite permitido.")
+
+    with transaction.atomic():
+        # A atualização também impede que recebimentos e cancelamentos
+        # desta venda sejam processados simultaneamente.
+        alteradas = Venda.objects.filter(
+            pk=venda_id,
+            confirmada=True,
+            cancelada=False,
+        ).update(confirmada=True)
+
+        if not alteradas:
+            raise ValueError(
+                "Só é possível receber pagamentos de vendas "
+                "confirmadas e não canceladas."
+            )
+
+        itens = list(
+            ItemVenda.objects.filter(venda_id=venda_id)
+        )
+
+        if not itens:
+            raise ValueError("Esta venda não possui itens.")
+
+        total = Decimal("0.00")
+
+        for item in itens:
+            if item.quantidade < 1 or item.preco_unitario <= 0:
+                raise ValueError(
+                    "Esta venda possui um item com quantidade "
+                    "ou preço inválido."
+                )
+
+            total += item.quantidade * item.preco_unitario
+
+        recebido = sum(
+            MovimentoCaixa.objects.filter(
+                venda_id=venda_id,
+                tipo="entrada",
+            ).values_list("valor", flat=True),
+            Decimal("0.00"),
+        )
+
+        pendente = total - recebido
+
+        if pendente <= Decimal("0.00"):
+            raise ValueError(
+                "Esta venda já está totalmente paga."
+            )
+
+        if valor > pendente:
+            pendente_formatado = (
+                f"{pendente:.2f}".replace(".", ",")
+            )
+
+            raise ValueError(
+                "O recebimento não pode ultrapassar o valor "
+                f"pendente de R$ {pendente_formatado}."
+            )
+
+        movimento = MovimentoCaixa(
+            venda_id=venda_id,
+            descricao=f"Recebimento da Venda {venda_id}",
+            tipo="entrada",
+            valor=valor,
+            data=data,
+        )
+
+        movimento.full_clean()
+        movimento.save()
+
+        return movimento

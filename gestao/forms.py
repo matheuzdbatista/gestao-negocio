@@ -166,3 +166,28 @@ class CancelamentoVendaForm(forms.Form):
             }
         ),
     )
+class RecebimentoVendaForm(forms.Form):
+    valor = forms.DecimalField(
+        label="Valor recebido",
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+        widget=forms.NumberInput(
+            attrs={
+                "min": "0.01",
+                "step": "0.01",
+                "placeholder": "Ex.: 16,00",
+            }
+        ),
+    )
+
+    data = forms.DateField(
+        label="Data do recebimento",
+        input_formats=["%Y-%m-%d", "%d/%m/%Y"],
+        widget=forms.DateInput(
+            format="%Y-%m-%d",
+            attrs={
+                "type": "date",
+            },
+        ),
+    )
