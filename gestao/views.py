@@ -630,3 +630,32 @@ def entradas_estoque(request):
             "entradas": entradas,
         },
     )
+@staff_member_required
+def detalhe_venda(request, pk):
+    venda = get_object_or_404(
+        Venda.objects.select_related(
+            "cliente",
+            "cancelada_por",
+        ),
+        pk=pk,
+    )
+
+    itens = list(
+        venda.itens.select_related("produto").order_by("id")
+    )
+
+    total = Decimal("0.00")
+
+    for item in itens:
+        item.subtotal = item.quantidade * item.preco_unitario
+        total += item.subtotal
+
+    return render(
+        request,
+        "gestao/venda_detalhe.html",
+        {
+            "venda": venda,
+            "itens": itens,
+            "total": total,
+        },
+    )

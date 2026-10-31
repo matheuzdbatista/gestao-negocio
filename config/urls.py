@@ -11,6 +11,7 @@ from gestao.views import (
     editar_cliente,
     lista_vendas,
     nova_venda,
+    detalhe_venda,
     confirmar_venda,
     cancelar_venda,
     lista_caixa,
@@ -20,10 +21,13 @@ from gestao.views import (
 
 
 urlpatterns = [
+    # Painel administrativo
     path("admin/", admin.site.urls),
 
+    # Dashboard
     path("", dashboard, name="dashboard"),
 
+    # Produtos
     path(
         "produtos/",
         lista_produtos,
@@ -40,6 +44,7 @@ urlpatterns = [
         name="editar_produto",
     ),
 
+    # Clientes
     path(
         "clientes/",
         lista_clientes,
@@ -56,6 +61,7 @@ urlpatterns = [
         name="editar_cliente",
     ),
 
+    # Vendas
     path(
         "vendas/",
         lista_vendas,
@@ -65,6 +71,11 @@ urlpatterns = [
         "vendas/nova/",
         nova_venda,
         name="nova_venda",
+    ),
+    path(
+        "vendas/<int:pk>/",
+        detalhe_venda,
+        name="detalhe_venda",
     ),
     path(
         "vendas/<int:pk>/confirmar/",
@@ -77,6 +88,7 @@ urlpatterns = [
         name="cancelar_venda",
     ),
 
+    # Caixa
     path(
         "caixa/",
         lista_caixa,
@@ -88,6 +100,7 @@ urlpatterns = [
         name="novo_movimento",
     ),
 
+    # Entradas de estoque
     path(
         "estoque/entradas/",
         entradas_estoque,

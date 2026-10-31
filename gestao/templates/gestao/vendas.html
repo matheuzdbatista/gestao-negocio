@@ -2,7 +2,8 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Vendas | Painel de Gestão</title>
 
     <style>
@@ -15,41 +16,73 @@
             background: #f3f5f9;
             color: #1e293b;
             font-family: Arial, sans-serif;
-        }
-
-        main {
-            max-width: 1200px;
-            margin: auto;
-            padding: 32px 20px;
-        }
-
-        h1 {
-            margin-bottom: 8px;
-        }
-
-        .descricao {
-            color: #475569;
             line-height: 1.5;
         }
 
-        nav,
-        .pesquisa {
+        main {
+            width: calc(100% - 32px);
+            max-width: 1200px;
+            margin: 48px auto;
+        }
+
+        h1 {
+            margin-bottom: 12px;
+            font-size: 32px;
+        }
+
+        .descricao {
+            margin-bottom: 24px;
+            color: #475569;
+        }
+
+        .navegacao,
+        .filtros,
+        .acoes {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             gap: 12px;
-            margin: 24px 0;
+        }
+
+        .navegacao,
+        .filtros {
+            margin-bottom: 24px;
+        }
+
+        .filtros label {
+            font-weight: normal;
+        }
+
+        .filtros input {
+            width: 280px;
+            max-width: 100%;
+            padding: 12px;
+            border: 1px solid #94a3b8;
+            border-radius: 8px;
+            background: white;
+            color: #1e293b;
+            font: inherit;
+        }
+
+        input:focus,
+        a:focus-visible,
+        button:focus-visible {
+            outline: 2px solid #1d4ed8;
+            outline-offset: 3px;
         }
 
         .botao {
             display: inline-block;
             padding: 12px 18px;
-            border: 0;
+            border: none;
             border-radius: 8px;
             background: #1d4ed8;
             color: white;
-            text-decoration: none;
             font: inherit;
+            line-height: 1.2;
+            text-align: center;
+            text-decoration: none;
+            white-space: nowrap;
             cursor: pointer;
         }
 
@@ -74,27 +107,9 @@
             background: #991b1b;
         }
 
-        input {
-            width: 280px;
-            max-width: 100%;
-            padding: 12px;
-            border: 1px solid #94a3b8;
-            border-radius: 8px;
-            background: white;
-            color: #1e293b;
-            font: inherit;
-        }
-
-        a:focus-visible,
-        button:focus-visible,
-        input:focus-visible {
-            outline: 3px solid #1e293b;
-            outline-offset: 3px;
-        }
-
         .painel {
             padding: 24px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #dbe3ef;
             border-radius: 12px;
             background: white;
         }
@@ -111,22 +126,38 @@
         th,
         td {
             padding: 14px 10px;
+            border-bottom: 1px solid #dbe3ef;
             text-align: left;
             vertical-align: top;
-            border-bottom: 1px solid #e2e8f0;
         }
 
         th {
             color: #475569;
         }
 
+        .valor,
+        .data {
+            white-space: nowrap;
+        }
+
+        .link-venda {
+            color: #1d4ed8;
+            font-weight: bold;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .link-venda:hover {
+            color: #1e40af;
+        }
+
         .confirmada {
-            color: #166534;
+            color: #15803d;
             font-weight: bold;
         }
 
         .pendente {
-            color: #9a3412;
+            color: #b45309;
             font-weight: bold;
         }
 
@@ -137,59 +168,81 @@
 
         .motivo {
             max-width: 280px;
-            margin: 8px 0;
-            line-height: 1.5;
+            margin: 4px 0;
+            white-space: pre-wrap;
             overflow-wrap: anywhere;
         }
 
         .historico {
             display: block;
+            margin-top: 6px;
             color: #475569;
-            line-height: 1.5;
+            font-size: 13px;
         }
 
-        .acao-venda {
+        .acoes form {
             margin: 0;
         }
 
         .mensagem {
+            margin-bottom: 16px;
             padding: 16px;
-            margin: 16px 0;
             border: 1px solid #cbd5e1;
             border-radius: 8px;
             background: white;
-            line-height: 1.5;
         }
 
         .mensagem.success {
-            background: #f0fdf4;
             border-color: #86efac;
+            background: #f0fdf4;
             color: #166534;
         }
 
         .mensagem.error {
-            background: #fef2f2;
             border-color: #fca5a5;
+            background: #fef2f2;
             color: #991b1b;
         }
 
         .mensagem.warning {
-            background: #fffbeb;
             border-color: #fcd34d;
+            background: #fffbeb;
             color: #92400e;
         }
 
-        @media (max-width: 480px) {
+        .mensagem.info {
+            border-color: #93c5fd;
+            background: #eff6ff;
+            color: #1e40af;
+        }
+
+        .ajuda {
+            margin-bottom: 0;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
             main {
-                padding: 20px 14px;
+                margin: 24px auto;
             }
 
             .painel {
                 padding: 16px;
             }
 
-            input {
+            .filtros {
+                align-items: stretch;
+            }
+
+            .filtros label,
+            .filtros input {
                 width: 100%;
+            }
+
+            th,
+            td {
+                padding: 12px 8px;
             }
         }
     </style>
@@ -205,31 +258,28 @@
             Os movimentos de dinheiro são registrados separadamente no caixa.
         </p>
 
-        <nav aria-label="Navegação">
-            <a class="botao" href="{% url 'nova_venda' %}">
+        <nav class="navegacao" aria-label="Navegação de vendas">
+            <a href="{% url 'nova_venda' %}" class="botao">
                 Nova venda
             </a>
 
-            <a
-                class="botao secundario"
-                href="{% url 'dashboard' %}"
-            >
+            <a href="{% url 'dashboard' %}" class="botao secundario">
                 Voltar ao dashboard
             </a>
 
             <a
-                class="botao secundario"
                 href="{% url 'admin:gestao_venda_changelist' %}"
+                class="botao secundario"
             >
                 Gerenciar no painel
             </a>
         </nav>
 
         <form
-            class="pesquisa"
             method="get"
             action="{% url 'lista_vendas' %}"
-            aria-label="Pesquisa de vendas"
+            class="filtros"
+            role="search"
         >
             <label for="busca">Número da venda ou cliente:</label>
 
@@ -237,26 +287,23 @@
                 type="search"
                 id="busca"
                 name="busca"
-                value="{{ busca }}"
+                value="{{ busca|default:'' }}"
                 placeholder="Ex.: 1 ou Matheus"
             >
 
-            <button class="botao" type="submit">
+            <button type="submit" class="botao">
                 Pesquisar
             </button>
 
-            <a
-                class="botao secundario"
-                href="{% url 'lista_vendas' %}"
-            >
+            <a href="{% url 'lista_vendas' %}" class="botao secundario">
                 Limpar
             </a>
         </form>
 
-        {% for mensagem in messages %}
-            <p class="mensagem {{ mensagem.tags }}" role="status">
-                {{ mensagem }}
-            </p>
+        {% for message in messages %}
+            <div class="mensagem {{ message.tags }}" role="status">
+                {{ message }}
+            </div>
         {% endfor %}
 
         <section class="painel" aria-label="Lista de vendas">
@@ -277,17 +324,25 @@
                         <tbody>
                             {% for venda in vendas %}
                                 <tr>
-                                    <td>{{ venda.pk }}</td>
+                                    <td>
+                                        <a
+                                            href="{% url 'detalhe_venda' venda.pk %}"
+                                            class="link-venda"
+                                            aria-label="Ver detalhes da venda {{ venda.pk }}"
+                                        >
+                                            {{ venda.pk }}
+                                        </a>
+                                    </td>
 
                                     <td>
                                         {{ venda.cliente|default:"Não informado" }}
                                     </td>
 
-                                    <td>
+                                    <td class="data">
                                         {{ venda.data|date:"d/m/Y H:i" }}
                                     </td>
 
-                                    <td>
+                                    <td class="valor">
                                         R$ {{ venda.total_calculado|floatformat:2 }}
                                     </td>
 
@@ -297,20 +352,17 @@
                                                 Cancelada
                                             </span>
 
-                                            <p class="motivo">
-                                                {{ venda.motivo_cancelamento }}
-                                            </p>
+                                            <p class="motivo">{{ venda.motivo_cancelamento }}</p>
 
-                                            <small class="historico">
+                                            <span class="historico">
                                                 {{ venda.data_cancelamento|date:"d/m/Y H:i" }}
-                                                · {{ venda.cancelada_por|default:"Não informado" }}
-                                            </small>
-
+                                                ·
+                                                {{ venda.cancelada_por|default:"Não informado" }}
+                                            </span>
                                         {% elif venda.confirmada %}
                                             <span class="confirmada">
                                                 Confirmada
                                             </span>
-
                                         {% else %}
                                             <span class="pendente">
                                                 Não confirmada
@@ -319,35 +371,42 @@
                                     </td>
 
                                     <td>
-                                        {% if venda.cancelada %}
-                                            —
-
-                                        {% elif venda.confirmada %}
+                                        <div class="acoes">
                                             <a
-                                                class="botao perigo"
-                                                href="{% url 'cancelar_venda' venda.pk %}"
-                                                aria-label="Cancelar venda {{ venda.pk }}"
+                                                href="{% url 'detalhe_venda' venda.pk %}"
+                                                class="botao secundario"
+                                                aria-label="Ver detalhes da venda {{ venda.pk }}"
                                             >
-                                                Cancelar venda
+                                                Detalhes
                                             </a>
 
-                                        {% else %}
-                                            <form
-                                                class="acao-venda"
-                                                method="post"
-                                                action="{% url 'confirmar_venda' venda.pk %}"
-                                            >
-                                                {% csrf_token %}
+                                            {% if not venda.cancelada %}
+                                                {% if venda.confirmada %}
+                                                    <a
+                                                        href="{% url 'cancelar_venda' venda.pk %}"
+                                                        class="botao perigo"
+                                                        aria-label="Cancelar venda {{ venda.pk }}"
+                                                    >
+                                                        Cancelar venda
+                                                    </a>
+                                                {% else %}
+                                                    <form
+                                                        method="post"
+                                                        action="{% url 'confirmar_venda' venda.pk %}"
+                                                    >
+                                                        {% csrf_token %}
 
-                                                <button
-                                                    class="botao"
-                                                    type="submit"
-                                                    aria-label="Confirmar venda {{ venda.pk }}"
-                                                >
-                                                    Confirmar venda
-                                                </button>
-                                            </form>
-                                        {% endif %}
+                                                        <button
+                                                            type="submit"
+                                                            class="botao"
+                                                            aria-label="Confirmar venda {{ venda.pk }}"
+                                                        >
+                                                            Confirmar venda
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
                                     </td>
                                 </tr>
                             {% endfor %}
@@ -355,6 +414,10 @@
                     </table>
                 </div>
 
+                <p class="ajuda">
+                    Clique no número da venda ou em Detalhes para consultar
+                    os produtos, as quantidades e os preços registrados.
+                </p>
             {% else %}
                 {% if busca %}
                     <p>
