@@ -9,6 +9,7 @@ from django.db.models import F, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.core.paginator import Paginator
 
 from .forms import (
     CancelamentoVendaForm,
@@ -837,5 +838,98 @@ def entradas_estoque(request):
         {
             "form": form,
             "entradas": entradas,
+        },
+    )
+@staff_member_required
+def historico_estoque(request):
+    busca = request.GET.get("busca", "").strip()
+    tipo = request.GET.get("tipo", "").strip()
+    origem = request.GET.get("origem", "").strip()
+    inicio = request.GET.get("inicio", "").strip()
+    fim = request.GET.get("fim", "").strip()
+
+    tipos_validos = dict(MovimentoEstoque.TIPOS)
+    origens_validas = dict(MovimentoEstoque.ORIGENS)
+
+    if tipo not in tipos_validos:
+        tipo = ""
+
+    if origem not in origens_validas:
+        origem = ""
+
+    data_inicio = None
+    data_fim = None
+    erro = ""
+
+    try:
+        if inicio:
+            data_inicio = date.fromisoformat(inicio)
+
+        if fim:
+            data_fim = date.fromisoformat(fim)
+    except ValueError:
+        erro = "Informe datas válidas para o período."
+
+    if (
+        not erro
+        and data_inicio
+        and data_fim
+        and data_inicio > data_fim
+    ):
+        erro = "A data inicial não pode ser posterior à data final."
+
+    movimentos = MovimentoEstoque.objects.select_related(
+        "produto",
+        "venda",
+        "usuario",
+    ).order_by("-data", "-id")
+
+    if busca:
+        movimentos = movimentos.filter(
+            Q(produto__nome__icontains=busca)
+            | Q(produto__codigo__icontains=busca)
+        )
+
+    if tipo:
+        movimentos = movimentos.filter(tipo=tipo)
+
+    if origem:
+        movimentos = movimentos.filter(origem=origem)
+
+    if erro:
+        movimentos = movimentos.none()
+    else:
+        if data_inicio:
+            movimentos = movimentos.filter(
+                data__date__gte=data_inicio,
+            )
+
+        if data_fim:
+            movimentos = movimentos.filter(
+                data__date__lte=data_fim,
+            )
+
+    paginador = Paginator(movimentos, 25)
+    pagina = paginador.get_page(request.GET.get("page"))
+
+    filtros = request.GET.copy()
+    filtros.pop("page", None)
+
+    return render(
+        request,
+        "gestao/historico_estoque.html",
+        {
+            "movimentos": pagina,
+            "pagina": pagina,
+            "total_movimentos": paginador.count,
+            "busca": busca,
+            "tipo": tipo,
+            "origem": origem,
+            "inicio": inicio,
+            "fim": fim,
+            "erro": erro,
+            "tipos": MovimentoEstoque.TIPOS,
+            "origens": MovimentoEstoque.ORIGENS,
+            "filtros_url": filtros.urlencode(),
         },
     )

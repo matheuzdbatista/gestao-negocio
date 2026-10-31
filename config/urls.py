@@ -2,30 +2,38 @@ from django.contrib import admin
 from django.urls import path
 
 from gestao.views import (
+    cancelar_venda,
+    confirmar_venda,
     dashboard,
-    lista_produtos,
-    novo_produto,
-    editar_produto,
-    lista_clientes,
-    novo_cliente,
+    detalhe_venda,
     editar_cliente,
+    editar_produto,
+    entradas_estoque,
+    historico_estoque,
+    lista_caixa,
+    lista_clientes,
+    lista_produtos,
     lista_vendas,
     nova_venda,
-    detalhe_venda,
-    confirmar_venda,
-    cancelar_venda,
-    lista_caixa,
+    novo_cliente,
     novo_movimento,
-    entradas_estoque,
+    novo_produto,
 )
 
 
 urlpatterns = [
     # Painel administrativo
-    path("admin/", admin.site.urls),
+    path(
+        "admin/",
+        admin.site.urls,
+    ),
 
     # Dashboard
-    path("", dashboard, name="dashboard"),
+    path(
+        "",
+        dashboard,
+        name="dashboard",
+    ),
 
     # Produtos
     path(
@@ -100,10 +108,15 @@ urlpatterns = [
         name="novo_movimento",
     ),
 
-    # Entradas de estoque
+    # Estoque
     path(
         "estoque/entradas/",
         entradas_estoque,
         name="entradas_estoque",
+    ),
+    path(
+        "estoque/historico/",
+        historico_estoque,
+        name="historico_estoque",
     ),
 ]

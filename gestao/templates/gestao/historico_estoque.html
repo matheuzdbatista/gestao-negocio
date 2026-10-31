@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Histórico de estoque | Painel de Gestão</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #f3f5f9;
+            color: #1e293b;
+            font-family: Arial, sans-serif;
+            line-height: 1.5;
+        }
+
+        main {
+            width: calc(100% - 32px);
+            max-width: 1200px;
+            margin: 48px auto;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .descricao,
+        .ajuda {
+            color: #475569;
+        }
+
+        .acoes,
+        .paginacao {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        .botao {
+            display: inline-block;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            background: #1d4ed8;
+            color: white;
+            font: inherit;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .botao:hover {
+            background: #1e40af;
+        }
+
+        .secundario {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .secundario:hover {
+            background: #cbd5e1;
+        }
+
+        .painel {
+            margin-bottom: 24px;
+            padding: 24px;
+            border: 1px solid #dbe3ef;
+            border-radius: 12px;
+            background: white;
+        }
+
+        .filtros {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            min-height: 44px;
+            padding: 10px 12px;
+            border: 1px solid #94a3b8;
+            border-radius: 8px;
+            background: white;
+            color: #1e293b;
+            font: inherit;
+        }
+
+        :focus-visible {
+            outline: 2px solid #1d4ed8;
+            outline-offset: 3px;
+        }
+
+        .tabela {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 14px 10px;
+            border-bottom: 1px solid #dbe3ef;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            color: #475569;
+        }
+
+        .numero {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .data {
+            white-space: nowrap;
+        }
+
+        .entrada {
+            color: #15803d;
+            font-weight: bold;
+        }
+
+        .saida {
+            color: #b91c1c;
+            font-weight: bold;
+        }
+
+        .codigo {
+            display: block;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .motivo {
+            min-width: 180px;
+            max-width: 300px;
+            overflow-wrap: anywhere;
+        }
+
+        .erro {
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            background: #fef2f2;
+            color: #991b1b;
+        }
+
+        a {
+            color: #1d4ed8;
+        }
+
+        @media (max-width: 700px) {
+            main {
+                margin: 24px auto;
+            }
+
+            .painel {
+                padding: 16px;
+            }
+
+            .filtros {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Histórico de estoque</h1>
+
+        <p class="descricao">
+            Consulte entradas, saídas e os saldos registrados
+            após cada movimentação.
+        </p>
+
+        <nav class="acoes" aria-label="Navegação do estoque">
+            <a href="{% url 'lista_produtos' %}" class="botao">
+                Produtos
+            </a>
+
+            <a href="{% url 'entradas_estoque' %}" class="botao">
+                Entrada de estoque
+            </a>
+
+            <a href="{% url 'dashboard' %}" class="botao secundario">
+                Voltar ao dashboard
+            </a>
+        </nav>
+
+        <section class="painel" aria-label="Filtros do histórico">
+            <form method="get" action="{% url 'historico_estoque' %}">
+                <div class="filtros">
+                    <div>
+                        <label for="busca">Nome ou código do produto</label>
+
+                        <input
+                            type="search"
+                            id="busca"
+                            name="busca"
+                            value="{{ busca }}"
+                            placeholder="Ex.: Caderno ou CAD001"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="tipo">Tipo</label>
+
+                        <select id="tipo" name="tipo">
+                            <option value="">Todos</option>
+
+                            {% for valor, rotulo in tipos %}
+                                <option
+                                    value="{{ valor }}"
+                                    {% if tipo == valor %}selected{% endif %}
+                                >
+                                    {{ rotulo }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="origem">Origem</label>
+
+                        <select id="origem" name="origem">
+                            <option value="">Todas</option>
+
+                            {% for valor, rotulo in origens %}
+                                <option
+                                    value="{{ valor }}"
+                                    {% if origem == valor %}selected{% endif %}
+                                >
+                                    {{ rotulo }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="inicio">Data inicial</label>
+
+                        <input
+                            type="date"
+                            id="inicio"
+                            name="inicio"
+                            value="{{ inicio }}"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="fim">Data final</label>
+
+                        <input
+                            type="date"
+                            id="fim"
+                            name="fim"
+                            value="{{ fim }}"
+                        >
+                    </div>
+                </div>
+
+                <div class="acoes">
+                    <button type="submit" class="botao">
+                        Filtrar
+                    </button>
+
+                    <a
+                        href="{% url 'historico_estoque' %}"
+                        class="botao secundario"
+                    >
+                        Limpar
+                    </a>
+                </div>
+            </form>
+
+            <p class="ajuda">
+                As datas inicial e final são incluídas na consulta.
+                O saldo após o movimento pertence àquele momento
+                e ao produto daquela linha.
+            </p>
+        </section>
+
+        {% if erro %}
+            <div class="erro" role="alert">
+                {{ erro }}
+            </div>
+        {% endif %}
+
+        <section class="painel" aria-label="Movimentações encontradas">
+            {% if not erro %}
+                <p>
+                    <strong>{{ total_movimentos }}</strong>
+                    movimento(s) encontrado(s).
+                </p>
+            {% endif %}
+
+            {% if movimentos %}
+                <div class="tabela">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Data</th>
+                                <th scope="col">Produto</th>
+                                <th scope="col">Tipo</th>
+                                <th scope="col">Origem</th>
+                                <th scope="col" class="numero">Quantidade</th>
+                                <th scope="col" class="numero">Saldo após</th>
+                                <th scope="col">Venda</th>
+                                <th scope="col">Motivo</th>
+                                <th scope="col">Responsável</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for movimento in movimentos %}
+                                <tr>
+                                    <td class="data">
+                                        {{ movimento.data|date:"d/m/Y H:i" }}
+                                    </td>
+
+                                    <td>
+                                        {{ movimento.produto.nome }}
+
+                                        <span class="codigo">
+                                            {{ movimento.produto.codigo }}
+                                        </span>
+                                    </td>
+
+                                    <td class="{{ movimento.tipo }}">
+                                        {{ movimento.get_tipo_display }}
+                                    </td>
+
+                                    <td>
+                                        {{ movimento.get_origem_display }}
+                                    </td>
+
+                                    <td class="numero">
+                                        {% if movimento.tipo == "entrada" %}+{% else %}-{% endif %}{{ movimento.quantidade }}
+                                    </td>
+
+                                    <td class="numero">
+                                        {{ movimento.saldo_apos }}
+                                    </td>
+
+                                    <td>
+                                        {% if movimento.venda_id %}
+                                            <a href="{% url 'detalhe_venda' movimento.venda_id %}">
+                                                {{ movimento.venda_id }}
+                                            </a>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+
+                                    <td class="motivo">
+                                        {{ movimento.motivo }}
+                                    </td>
+
+                                    <td>
+                                        {{ movimento.usuario|default:"Não informado" }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if pagina.has_other_pages %}
+                    <nav class="paginacao" aria-label="Páginas do histórico">
+                        {% if pagina.has_previous %}
+                            <a
+                                href="?{{ filtros_url }}&amp;page={{ pagina.previous_page_number }}"
+                                class="botao secundario"
+                            >
+                                Anterior
+                            </a>
+                        {% endif %}
+
+                        <span>
+                            Página {{ pagina.number }}
+                            de {{ pagina.paginator.num_pages }}
+                        </span>
+
+                        {% if pagina.has_next %}
+                            <a
+                                href="?{{ filtros_url }}&amp;page={{ pagina.next_page_number }}"
+                                class="botao secundario"
+                            >
+                                Próxima
+                            </a>
+                        {% endif %}
+                    </nav>
+                {% endif %}
+            {% elif not erro %}
+                <p>Nenhuma movimentação encontrada para os filtros.</p>
+            {% endif %}
+
+            <p class="ajuda">
+                O histórico começa com os saldos existentes na implantação
+                deste recurso. Movimentações anteriores não foram reconstruídas.
+                Os nomes e códigos apresentados refletem o cadastro atual.
+            </p>
+        </section>
+    </main>
+</body>
+</html>
