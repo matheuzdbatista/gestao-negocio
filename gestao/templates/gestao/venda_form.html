@@ -2,7 +2,8 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Nova venda | Painel de Gestão</title>
 
     <style>
@@ -15,37 +16,51 @@
             background: #f3f5f9;
             color: #1e293b;
             font-family: Arial, sans-serif;
-        }
-
-        main {
-            max-width: 1000px;
-            margin: auto;
-            padding: 32px 20px;
-        }
-
-        .descricao {
-            color: #475569;
             line-height: 1.5;
         }
 
-        form {
-            margin-top: 24px;
+        main {
+            width: calc(100% - 32px);
+            max-width: 1060px;
+            margin: 48px auto;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .descricao,
+        .ajuda {
+            color: #475569;
+        }
+
+        .painel {
             padding: 24px;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
+            margin-bottom: 24px;
             background: white;
+            border: 1px solid #dbe3ef;
+            border-radius: 12px;
+        }
+
+        .painel h2 {
+            margin-top: 0;
+        }
+
+        .campo {
+            margin-bottom: 16px;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             font-weight: bold;
         }
 
-        input,
-        select {
+        select,
+        input:not([type="hidden"]):not([type="checkbox"]) {
             width: 100%;
-            padding: 12px;
+            min-height: 44px;
+            padding: 10px 12px;
             border: 1px solid #94a3b8;
             border-radius: 8px;
             background: white;
@@ -53,21 +68,15 @@
             font: inherit;
         }
 
-        .cliente {
-            max-width: 450px;
-            margin-bottom: 24px;
-        }
-
-        fieldset {
-            margin: 20px 0;
+        .item {
+            margin-bottom: 20px;
             padding: 20px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid #dbe3ef;
             border-radius: 8px;
         }
 
-        legend {
-            padding: 0 8px;
-            font-weight: bold;
+        .item h3 {
+            margin-top: 0;
         }
 
         .campos-item {
@@ -76,25 +85,27 @@
             gap: 16px;
         }
 
-        .campo {
-            min-width: 0;
-        }
-
+        .rodape-item,
         .acoes {
             display: flex;
             flex-wrap: wrap;
+            align-items: center;
             gap: 12px;
-            margin-top: 24px;
+        }
+
+        .rodape-item {
+            justify-content: space-between;
         }
 
         .botao {
             display: inline-block;
             padding: 12px 18px;
-            border: 0;
+            border: none;
             border-radius: 8px;
             background: #1d4ed8;
             color: white;
             font: inherit;
+            text-align: center;
             text-decoration: none;
             cursor: pointer;
         }
@@ -112,27 +123,65 @@
             background: #cbd5e1;
         }
 
-        .errorlist {
-            color: #b91c1c;
-            padding-left: 20px;
-            line-height: 1.5;
+        .perigo {
+            background: #b91c1c;
         }
 
-        a:focus-visible,
-        button:focus-visible,
-        input:focus-visible,
-        select:focus-visible {
-            outline: 3px solid #1e293b;
+        .perigo:hover {
+            background: #991b1b;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        :focus-visible {
+            outline: 2px solid #1d4ed8;
             outline-offset: 3px;
         }
 
+        .total {
+            margin: 24px 0;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .errorlist,
+        .erros {
+            color: #b91c1c;
+        }
+
+        .erros {
+            margin-bottom: 20px;
+            padding: 16px;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            background: #fef2f2;
+        }
+
+        .exclusao {
+            margin-bottom: 12px;
+        }
+
+        .exclusao label {
+            display: inline;
+            font-weight: normal;
+        }
+
         @media (max-width: 650px) {
-            .campos-item {
-                grid-template-columns: 1fr;
+            main {
+                margin: 24px auto;
             }
 
-            form {
+            .painel,
+            .item {
                 padding: 16px;
+            }
+
+            .campos-item {
+                grid-template-columns: 1fr;
+                gap: 0;
             }
         }
     </style>
@@ -143,67 +192,420 @@
         <h1>Nova venda</h1>
 
         <p class="descricao">
-            Selecione o cliente, se desejar, e preencha pelo menos um produto.
-            Informe o preço unitário manualmente.
+            Selecione os produtos e informe as quantidades.
+            O preço do cadastro será sugerido e poderá ser ajustado.
         </p>
 
-        <p class="descricao">
-            Deixe as linhas não utilizadas como estão.
-            Salvar não confirma a venda nem baixa o estoque.
-        </p>
-
-        <form method="post">
+        <form method="post" id="form-venda">
             {% csrf_token %}
 
-            {{ form.non_field_errors }}
-
-            <div class="cliente">
-                {{ form.cliente.label_tag }}
-                {{ form.cliente }}
-                {{ form.cliente.errors }}
-            </div>
-
-            <h2>Produtos da venda</h2>
-
             {{ formset.management_form }}
-            {{ formset.non_form_errors }}
 
-            {% for item in formset %}
-                <fieldset>
-                    <legend>Item {{ forloop.counter }}</legend>
+            {% if form.errors or formset.errors or formset.non_form_errors %}
+                <div class="erros" role="alert">
+                    Confira os campos abaixo antes de salvar.
+                    {{ form.non_field_errors }}
+                    {{ formset.non_form_errors }}
+                    {{ formset.management_form.errors }}
+                </div>
+            {% endif %}
 
-                    {% for oculto in item.hidden_fields %}
-                        {{ oculto }}
-                        {{ oculto.errors }}
-                    {% endfor %}
+            <section class="painel" aria-labelledby="titulo-cliente">
+                <h2 id="titulo-cliente">Cliente</h2>
 
-                    {{ item.non_field_errors }}
+                <div class="campo">
+                    <label for="{{ form.cliente.id_for_label }}">
+                        {{ form.cliente.label }}
+                    </label>
 
-                    <div class="campos-item">
-                        {% for campo in item.visible_fields %}
-                            <div class="campo">
-                                {{ campo.label_tag }}
-                                {{ campo }}
-                                {{ campo.errors }}
+                    {{ form.cliente }}
+                    {{ form.cliente.errors }}
+                </div>
+
+                <p class="ajuda">
+                    O cliente é opcional.
+                </p>
+            </section>
+
+            <section class="painel" aria-labelledby="titulo-itens">
+                <h2 id="titulo-itens">Produtos da venda</h2>
+
+                <div id="lista-itens">
+                    {% for item_form in formset %}
+                        <div class="item">
+                            <h3>Item <span class="numero-item">{{ forloop.counter }}</span></h3>
+
+                            {% for hidden in item_form.hidden_fields %}
+                                {{ hidden }}
+                                {{ hidden.errors }}
+                            {% endfor %}
+
+                            {{ item_form.non_field_errors }}
+
+                            <div class="campos-item">
+                                <div class="campo">
+                                    <label for="{{ item_form.produto.id_for_label }}">
+                                        Produto
+                                    </label>
+                                    {{ item_form.produto }}
+                                    {{ item_form.produto.errors }}
+                                </div>
+
+                                <div class="campo">
+                                    <label for="{{ item_form.quantidade.id_for_label }}">
+                                        Quantidade
+                                    </label>
+                                    {{ item_form.quantidade }}
+                                    {{ item_form.quantidade.errors }}
+                                </div>
+
+                                <div class="campo">
+                                    <label for="{{ item_form.preco_unitario.id_for_label }}">
+                                        Preço unitário
+                                    </label>
+                                    {{ item_form.preco_unitario }}
+                                    {{ item_form.preco_unitario.errors }}
+                                </div>
                             </div>
-                        {% endfor %}
-                    </div>
-                </fieldset>
-            {% endfor %}
+
+                            <div class="exclusao">
+                                {{ item_form.DELETE }}
+                                <label for="{{ item_form.DELETE.id_for_label }}">
+                                    Desconsiderar este item
+                                </label>
+                            </div>
+
+                            <div class="rodape-item">
+                                <strong>
+                                    Subtotal:
+                                    <span class="subtotal">R$ 0,00</span>
+                                </strong>
+
+                                <button
+                                    type="button"
+                                    class="botao perigo remover-item"
+                                    hidden
+                                >
+                                    Remover
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <button
+                    type="button"
+                    class="botao secundario"
+                    id="adicionar-item"
+                    hidden
+                >
+                    Adicionar item
+                </button>
+
+                <p id="aviso-itens" class="ajuda" role="status"></p>
+
+                <p class="total">
+                    Total estimado:
+                    <span id="total-venda">R$ 0,00</span>
+                </p>
+
+                <p class="ajuda">
+                    Inclua de 1 a 20 itens.
+                    Salvar a venda não altera o estoque.
+                    A baixa acontece ao confirmar a venda.
+                </p>
+
+                <noscript>
+                    <p>
+                        Ative o JavaScript para adicionar linhas,
+                        preencher preços e visualizar o total estimado.
+                    </p>
+                </noscript>
+            </section>
 
             <div class="acoes">
-                <button class="botao" type="submit">
+                <button type="submit" class="botao">
                     Salvar venda
                 </button>
 
-                <a
-                    class="botao secundario"
-                    href="{% url 'lista_vendas' %}"
-                >
+                <a href="{% url 'lista_vendas' %}" class="botao secundario">
                     Cancelar
                 </a>
             </div>
         </form>
+
+        <template id="modelo-item">
+            {% with item_form=formset.empty_form %}
+                <div class="item">
+                    <h3>Item <span class="numero-item"></span></h3>
+
+                    {% for hidden in item_form.hidden_fields %}
+                        {{ hidden }}
+                    {% endfor %}
+
+                    <div class="campos-item">
+                        <div class="campo">
+                            <label for="{{ item_form.produto.id_for_label }}">
+                                Produto
+                            </label>
+                            {{ item_form.produto }}
+                        </div>
+
+                        <div class="campo">
+                            <label for="{{ item_form.quantidade.id_for_label }}">
+                                Quantidade
+                            </label>
+                            {{ item_form.quantidade }}
+                        </div>
+
+                        <div class="campo">
+                            <label for="{{ item_form.preco_unitario.id_for_label }}">
+                                Preço unitário
+                            </label>
+                            {{ item_form.preco_unitario }}
+                        </div>
+                    </div>
+
+                    <div class="exclusao">
+                        {{ item_form.DELETE }}
+                        <label for="{{ item_form.DELETE.id_for_label }}">
+                            Desconsiderar este item
+                        </label>
+                    </div>
+
+                    <div class="rodape-item">
+                        <strong>
+                            Subtotal:
+                            <span class="subtotal">R$ 0,00</span>
+                        </strong>
+
+                        <button
+                            type="button"
+                            class="botao perigo remover-item"
+                        >
+                            Remover
+                        </button>
+                    </div>
+                </div>
+            {% endwith %}
+        </template>
+
+        {{ precos_produtos|json_script:"precos-produtos" }}
+
+        <script>
+            (() => {
+                "use strict";
+
+                const precos = JSON.parse(
+                    document.getElementById("precos-produtos").textContent
+                );
+
+                const lista = document.getElementById("lista-itens");
+                const modelo = document.getElementById("modelo-item");
+                const adicionar = document.getElementById("adicionar-item");
+                const totalForms = document.getElementById("id_itens-TOTAL_FORMS");
+                const totalVenda = document.getElementById("total-venda");
+                const aviso = document.getElementById("aviso-itens");
+
+                const moeda = new Intl.NumberFormat("pt-BR", {
+                    style: "currency",
+                    currency: "BRL"
+                });
+
+                function linhas() {
+                    return [...lista.querySelectorAll(".item")];
+                }
+
+                function campo(linha, nome) {
+                    return linha.querySelector(`[name$="-${nome}"]`);
+                }
+
+                function centavos(valor) {
+                    const texto = String(valor).trim().replace(",", ".");
+                    if (!/^\d+(?:\.\d{1,2})?$/.test(texto)) {
+                        return null;
+                    }
+
+                    const [inteiros, decimais = ""] = texto.split(".");
+                    const resultado =
+                        Number(inteiros) * 100 +
+                        Number(decimais.padEnd(2, "0"));
+
+                    return Number.isSafeInteger(resultado)
+                        ? resultado
+                        : null;
+                }
+
+                function atualizarTotal() {
+                    let total = 0;
+                    let valido = true;
+
+                    linhas().forEach((linha) => {
+                        const produto = campo(linha, "produto").value;
+                        const quantidade = Number(
+                            campo(linha, "quantidade").value
+                        );
+                        const preco = centavos(
+                            campo(linha, "preco_unitario").value
+                        );
+
+                        let subtotal = 0;
+
+                        if (produto) {
+                            if (
+                                !Number.isSafeInteger(quantidade) ||
+                                quantidade < 1 ||
+                                preco === null ||
+                                preco < 1 ||
+                                !Number.isSafeInteger(quantidade * preco)
+                            ) {
+                                valido = false;
+                                linha.querySelector(".subtotal").textContent =
+                                    "Confira quantidade e preço";
+                                return;
+                            }
+
+                            subtotal = quantidade * preco;
+                        }
+
+                        linha.querySelector(".subtotal").textContent =
+                            moeda.format(subtotal / 100);
+
+                        total += subtotal;
+
+                        if (!Number.isSafeInteger(total)) {
+                            valido = false;
+                        }
+                    });
+
+                    totalVenda.textContent = valido
+                        ? moeda.format(total / 100)
+                        : "Confira os valores dos itens";
+                }
+
+                function reorganizar() {
+                    const itens = linhas();
+
+                    itens.forEach((linha, indice) => {
+                        linha.querySelectorAll("[name], [id], label[for]")
+                            .forEach((elemento) => {
+                                ["name", "id", "for"].forEach((atributo) => {
+                                    const valor = elemento.getAttribute(atributo);
+
+                                    if (valor) {
+                                        elemento.setAttribute(
+                                            atributo,
+                                            valor.replace(
+                                                /itens-(?:\d+|__prefix__)-/g,
+                                                `itens-${indice}-`
+                                            )
+                                        );
+                                    }
+                                });
+                            });
+
+                        linha.querySelector(".numero-item").textContent =
+                            indice + 1;
+
+                        linha.querySelector(".exclusao").hidden = true;
+
+                        const remover = linha.querySelector(".remover-item");
+                        remover.hidden = false;
+                        remover.disabled = itens.length <= 1;
+
+                        ["produto", "quantidade", "preco_unitario"]
+                            .forEach((nome) => {
+                                campo(linha, nome).required = true;
+                            });
+                    });
+
+                    totalForms.value = itens.length;
+                    adicionar.disabled = itens.length >= 20;
+
+                    aviso.textContent = itens.length >= 20
+                        ? "Limite de 20 itens atingido."
+                        : `${itens.length} de 20 itens.`;
+
+                    atualizarTotal();
+                }
+
+                function adicionarLinha(focar = true) {
+                    if (linhas().length >= 20) {
+                        return;
+                    }
+
+                    const fragmento = modelo.content.cloneNode(true);
+                    lista.appendChild(fragmento);
+
+                    reorganizar();
+
+                    if (focar) {
+                        campo(linhas().at(-1), "produto").focus();
+                    }
+                }
+
+                lista.addEventListener("change", (evento) => {
+                    const linha = evento.target.closest(".item");
+                    if (!linha) {
+                        return;
+                    }
+
+                    if (evento.target.name.endsWith("-produto")) {
+                        const produtoId = evento.target.value;
+                        const preco = campo(linha, "preco_unitario");
+
+                        preco.value = Object.prototype.hasOwnProperty.call(
+                            precos,
+                            produtoId
+                        ) ? precos[produtoId] : "";
+                    }
+
+                    atualizarTotal();
+                });
+
+                lista.addEventListener("input", atualizarTotal);
+
+                lista.addEventListener("click", (evento) => {
+                    const botao = evento.target.closest(".remover-item");
+
+                    if (!botao || linhas().length <= 1) {
+                        return;
+                    }
+
+                    const linha = botao.closest(".item");
+                    const indice = linhas().indexOf(linha);
+
+                    linha.remove();
+                    reorganizar();
+
+                    const destino = linhas()[
+                        Math.min(indice, linhas().length - 1)
+                    ];
+
+                    campo(destino, "produto").focus();
+                });
+
+                adicionar.addEventListener("click", () => adicionarLinha());
+
+                // Esta página cadastra apenas vendas novas.
+                // Linhas removidas podem ser excluídas e renumeradas.
+                linhas().forEach((linha) => {
+                    const excluir = campo(linha, "DELETE");
+
+                    if (excluir && excluir.checked) {
+                        linha.remove();
+                    }
+                });
+
+                adicionar.hidden = false;
+
+                if (linhas().length === 0) {
+                    adicionarLinha(false);
+                } else {
+                    reorganizar();
+                }
+            })();
+        </script>
     </main>
 </body>
 </html>

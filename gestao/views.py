@@ -405,7 +405,10 @@ def nova_venda(request):
                 "Venda cadastrada. Confirme para baixar o estoque.",
             )
 
-            return redirect("lista_vendas")
+            return redirect(
+                "detalhe_venda",
+                pk=venda.pk,
+            )
     else:
         form = VendaForm(instance=venda)
 
@@ -414,12 +417,20 @@ def nova_venda(request):
             prefix="itens",
         )
 
+    produtos = Produto.objects.order_by("nome", "id")
+
+    precos_produtos = {
+        str(produto.pk): str(produto.preco)
+        for produto in produtos
+    }
+
     return render(
         request,
         "gestao/venda_form.html",
         {
             "form": form,
             "formset": formset,
+            "precos_produtos": precos_produtos,
         },
     )
 

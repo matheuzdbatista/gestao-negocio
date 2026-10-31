@@ -1,21 +1,22 @@
 from decimal import Decimal
 
 from django import forms
-
-from .models import Produto, Cliente
-
 from django.forms import inlineformset_factory
 
-from .models import Venda, ItemVenda
-
-from .models import MovimentoCaixa
-
-from .models import EntradaEstoque
+from .models import (
+    Cliente,
+    EntradaEstoque,
+    ItemVenda,
+    MovimentoCaixa,
+    Produto,
+    Venda,
+)
 
 
 class ProdutoForm(forms.ModelForm):
     class Meta:
         model = Produto
+
         fields = [
             "nome",
             "codigo",
@@ -23,22 +24,43 @@ class ProdutoForm(forms.ModelForm):
             "estoque",
             "estoque_minimo",
         ]
+
         labels = {
             "nome": "Nome",
             "codigo": "Código",
-            "preco": "Preço (R$)",
+            "preco": "Preço",
             "estoque": "Estoque inicial",
             "estoque_minimo": "Estoque mínimo",
         }
+
         widgets = {
+            "nome": forms.TextInput(
+                attrs={
+                    "placeholder": "Ex.: Caderno",
+                }
+            ),
+            "codigo": forms.TextInput(
+                attrs={
+                    "placeholder": "Ex.: CAD001",
+                }
+            ),
             "preco": forms.NumberInput(
-                attrs={"min": "0.01", "step": "0.01"}
+                attrs={
+                    "min": "0.01",
+                    "step": "0.01",
+                }
             ),
             "estoque": forms.NumberInput(
-                attrs={"min": "0"}
+                attrs={
+                    "min": "0",
+                    "step": "1",
+                }
             ),
             "estoque_minimo": forms.NumberInput(
-                attrs={"min": "0"}
+                attrs={
+                    "min": "0",
+                    "step": "1",
+                }
             ),
         }
 
@@ -47,7 +69,7 @@ class ProdutoForm(forms.ModelForm):
 
         if preco < Decimal("0.01"):
             raise forms.ValidationError(
-                "Informe um preço maior que zero."
+                "O preço deve ser maior que zero."
             )
 
         return preco
@@ -66,95 +88,174 @@ class ProdutoEdicaoForm(ProdutoForm):
 class ClienteForm(forms.ModelForm):
     class Meta:
         model = Cliente
+
         fields = [
             "nome",
             "telefone",
             "email",
         ]
+
         labels = {
             "nome": "Nome",
             "telefone": "Telefone",
             "email": "E-mail",
         }
+
         widgets = {
+            "nome": forms.TextInput(
+                attrs={
+                    "placeholder": "Ex.: Matheus",
+                }
+            ),
             "telefone": forms.TextInput(
-                attrs={"placeholder": "Ex.: (11) 99999-9999"}
+                attrs={
+                    "placeholder": "Ex.: (11) 99999-9999",
+                }
             ),
             "email": forms.EmailInput(
-                attrs={"placeholder": "Ex.: cliente@example.com"}
+                attrs={
+                    "placeholder": "Ex.: cliente@example.com",
+                }
             ),
         }
+
+
 class VendaForm(forms.ModelForm):
     class Meta:
         model = Venda
-        fields = ["cliente"]
+
+        fields = [
+            "cliente",
+        ]
+
         labels = {
-            "cliente": "Cliente (opcional)",
+            "cliente": "Cliente",
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["cliente"].required = False
+        self.fields["cliente"].empty_label = "Não informado"
+        self.fields["cliente"].queryset = (
+            Cliente.objects.order_by("nome", "id")
+        )
 
 
 ItemVendaFormSet = inlineformset_factory(
     Venda,
     ItemVenda,
-    fields=["produto", "quantidade", "preco_unitario"],
+    fields=[
+        "produto",
+        "quantidade",
+        "preco_unitario",
+    ],
     labels={
         "produto": "Produto",
         "quantidade": "Quantidade",
-        "preco_unitario": "Preço unitário (R$)",
+        "preco_unitario": "Preço unitário",
     },
     widgets={
         "quantidade": forms.NumberInput(
-            attrs={"min": "1"}
+            attrs={
+                "min": "1",
+                "step": "1",
+            }
         ),
         "preco_unitario": forms.NumberInput(
-            attrs={"min": "0.01", "step": "0.01"}
+            attrs={
+                "min": "0.01",
+                "step": "0.01",
+            }
         ),
     },
-    extra=2,
+    extra=0,
     min_num=1,
     validate_min=True,
     max_num=20,
     validate_max=True,
-    can_delete=False,
+    can_delete=True,
 )
+
+
 class MovimentoCaixaForm(forms.ModelForm):
     class Meta:
         model = MovimentoCaixa
-        fields = ["descricao", "tipo", "valor", "data"]
+
+        fields = [
+            "descricao",
+            "tipo",
+            "valor",
+            "data",
+        ]
+
         labels = {
             "descricao": "Descrição",
             "tipo": "Tipo",
-            "valor": "Valor (R$)",
+            "valor": "Valor",
             "data": "Data do movimento",
         }
+
         widgets = {
+            "descricao": forms.TextInput(
+                attrs={
+                    "placeholder": "Ex.: Compra de embalagem",
+                }
+            ),
             "valor": forms.NumberInput(
-                attrs={"min": "0.01", "step": "0.01"}
+                attrs={
+                    "min": "0.01",
+                    "step": "0.01",
+                }
             ),
             "data": forms.DateInput(
                 format="%Y-%m-%d",
-                attrs={"type": "date"},
+                attrs={
+                    "type": "date",
+                },
             ),
         }
+
+
 class EntradaEstoqueForm(forms.ModelForm):
     class Meta:
         model = EntradaEstoque
-        fields = ["produto", "quantidade", "motivo"]
+
+        fields = [
+            "produto",
+            "quantidade",
+            "motivo",
+        ]
+
         labels = {
             "produto": "Produto",
             "quantidade": "Quantidade recebida",
             "motivo": "Motivo",
         }
+
         widgets = {
             "quantidade": forms.NumberInput(
-                attrs={"min": "1"}
+                attrs={
+                    "min": "1",
+                    "step": "1",
+                }
             ),
             "motivo": forms.TextInput(
                 attrs={
-                    "placeholder": "Ex.: Reposição de mercadoria"
+                    "placeholder": "Ex.: Reposição de mercadoria",
                 }
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["produto"].empty_label = "Selecione um produto"
+        self.fields["produto"].queryset = (
+            Produto.objects.order_by("nome", "id")
+        )
+
+
 class CancelamentoVendaForm(forms.Form):
     motivo = forms.CharField(
         label="Motivo do cancelamento",
@@ -166,6 +267,8 @@ class CancelamentoVendaForm(forms.Form):
             }
         ),
     )
+
+
 class RecebimentoVendaForm(forms.Form):
     valor = forms.DecimalField(
         label="Valor recebido",
@@ -183,7 +286,10 @@ class RecebimentoVendaForm(forms.Form):
 
     data = forms.DateField(
         label="Data do recebimento",
-        input_formats=["%Y-%m-%d", "%d/%m/%Y"],
+        input_formats=[
+            "%Y-%m-%d",
+            "%d/%m/%Y",
+        ],
         widget=forms.DateInput(
             format="%Y-%m-%d",
             attrs={
@@ -191,6 +297,8 @@ class RecebimentoVendaForm(forms.Form):
             },
         ),
     )
+
+
 class ReembolsoVendaForm(forms.Form):
     valor = forms.DecimalField(
         label="Valor a devolver",
@@ -208,7 +316,10 @@ class ReembolsoVendaForm(forms.Form):
 
     data = forms.DateField(
         label="Data do reembolso",
-        input_formats=["%Y-%m-%d", "%d/%m/%Y"],
+        input_formats=[
+            "%Y-%m-%d",
+            "%d/%m/%Y",
+        ],
         widget=forms.DateInput(
             format="%Y-%m-%d",
             attrs={
@@ -223,7 +334,9 @@ class ReembolsoVendaForm(forms.Form):
         widget=forms.Textarea(
             attrs={
                 "rows": 3,
-                "placeholder": "Explique o motivo da devolução do dinheiro",
+                "placeholder": (
+                    "Explique o motivo da devolução do dinheiro"
+                ),
             }
         ),
     )
