@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Painel de Gestão</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #f3f5f9;
+            color: #1e293b;
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: auto;
+            padding: 32px 20px;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .descricao {
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        nav a,
+        .botao {
+            display: inline-block;
+            background: #1d4ed8;
+            color: white;
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 8px;
+            text-decoration: none;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        nav a:hover,
+        .botao:hover {
+            background: #1e40af;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible {
+            outline: 3px solid #1e293b;
+            outline-offset: 3px;
+        }
+
+        .botao-secundario {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .botao-secundario:hover {
+            background: #cbd5e1;
+        }
+
+        .filtros {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 16px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 24px 0 12px;
+        }
+
+        .campo {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .campo label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .campo input {
+            padding: 10px;
+            border: 1px solid #94a3b8;
+            border-radius: 6px;
+            font: inherit;
+            color: #1e293b;
+            background: white;
+        }
+
+        .acoes-filtro {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .indicadores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .cartao,
+        .estoque {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .cartao h2 {
+            font-size: 15px;
+            color: #475569;
+            margin-top: 0;
+        }
+
+        .valor {
+            font-size: 30px;
+            font-weight: bold;
+            margin: 12px 0 0;
+            overflow-wrap: anywhere;
+        }
+
+        .entrada {
+            color: #166534;
+        }
+
+        .saida {
+            color: #b91c1c;
+        }
+
+        .erro {
+            padding: 16px;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            background: #fef2f2;
+            color: #991b1b;
+        }
+
+        .titulo-caixa {
+            margin-top: 32px;
+        }
+
+        .estoque {
+            margin-top: 24px;
+        }
+
+        .tabela {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 14px 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            color: #475569;
+        }
+
+        .aviso {
+            color: #9a3412;
+        }
+
+        @media (max-width: 480px) {
+            main {
+                padding: 20px 14px;
+            }
+
+            .indicadores {
+                grid-template-columns: 1fr;
+            }
+
+            .campo,
+            .campo input {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Painel de Gestão</h1>
+
+        <p class="descricao">{{ periodo }}</p>
+
+        <nav aria-label="Menu principal">
+            <a href="{% url 'admin:gestao_produto_changelist' %}">
+                Produtos
+            </a>
+
+            <a href="{% url 'admin:gestao_cliente_changelist' %}">
+                Clientes
+            </a>
+
+            <a href="{% url 'admin:gestao_venda_changelist' %}">
+                Vendas
+            </a>
+
+            <a href="{% url 'admin:gestao_movimentocaixa_changelist' %}">
+                Movimentos de caixa
+            </a>
+
+            <a href="{% url 'admin:index' %}">
+                Administração
+            </a>
+        </nav>
+
+        <form
+            class="filtros"
+            method="get"
+            action="{% url 'dashboard' %}"
+            aria-label="Filtro por período"
+        >
+            <div class="campo">
+                <label for="inicio">Data inicial</label>
+                <input
+                    type="date"
+                    id="inicio"
+                    name="inicio"
+                    value="{{ inicio }}"
+                >
+            </div>
+
+            <div class="campo">
+                <label for="fim">Data final</label>
+                <input
+                    type="date"
+                    id="fim"
+                    name="fim"
+                    value="{{ fim }}"
+                >
+            </div>
+
+            <div class="acoes-filtro">
+                <button class="botao" type="submit">
+                    Filtrar
+                </button>
+
+                <a
+                    class="botao botao-secundario"
+                    href="{% url 'dashboard' %}"
+                >
+                    Limpar filtro
+                </a>
+            </div>
+        </form>
+
+        <p class="descricao">
+            O filtro usa a data de criação da venda e a data do movimento
+            de caixa. As datas inicial e final são incluídas na consulta.
+            Produtos, clientes e estoque mostram a situação atual.
+        </p>
+
+        {% if erro %}
+            <p class="erro" role="alert">{{ erro }}</p>
+        {% endif %}
+
+        <section class="indicadores" aria-label="Indicadores do negócio">
+            <article class="cartao">
+                <h2>Produtos cadastrados atualmente</h2>
+                <p class="valor">{{ total_produtos }}</p>
+            </article>
+
+            <article class="cartao">
+                <h2>Clientes cadastrados atualmente</h2>
+                <p class="valor">{{ total_clientes }}</p>
+            </article>
+
+            <article class="cartao">
+                <h2>Vendas confirmadas no período</h2>
+
+                <p class="valor">
+                    {% if erro %}
+                        —
+                    {% else %}
+                        {{ total_vendas }}
+                    {% endif %}
+                </p>
+            </article>
+
+            <article class="cartao">
+                <h2>Faturamento confirmado no período</h2>
+
+                <p class="valor">
+                    {% if erro %}
+                        —
+                    {% else %}
+                        R$ {{ faturamento|floatformat:2 }}
+                    {% endif %}
+                </p>
+            </article>
+        </section>
+
+        <p class="descricao">
+            Faturamento considera apenas vendas confirmadas.
+            Não representa saldo de caixa nem lucro.
+        </p>
+
+        <h2 class="titulo-caixa">Controle de caixa</h2>
+
+        <p class="descricao">
+            Entradas e saídas registradas · {{ periodo }}
+        </p>
+
+        <section class="indicadores" aria-label="Resumo do caixa">
+            <article class="cartao">
+                <h2>Entradas no período</h2>
+
+                <p class="valor entrada">
+                    {% if erro %}
+                        —
+                    {% else %}
+                        R$ {{ entradas|floatformat:2 }}
+                    {% endif %}
+                </p>
+            </article>
+
+            <article class="cartao">
+                <h2>Saídas no período</h2>
+
+                <p class="valor saida">
+                    {% if erro %}
+                        —
+                    {% else %}
+                        R$ {{ saidas|floatformat:2 }}
+                    {% endif %}
+                </p>
+            </article>
+
+            <article class="cartao">
+                <h2>Resultado do período</h2>
+
+                <p class="valor">
+                    {% if erro %}
+                        —
+                    {% else %}
+                        R$ {{ saldo|floatformat:2 }}
+                    {% endif %}
+                </p>
+            </article>
+        </section>
+
+        <p class="descricao">
+            O resultado corresponde às entradas menos as saídas do período.
+            Não inclui saldo anterior ao período selecionado.
+            Os recebimentos das vendas são registrados manualmente no caixa.
+        </p>
+
+        <section class="estoque">
+            <h2>Estoque baixo — situação atual</h2>
+
+            <p class="descricao">
+                Produtos com quantidade igual ou inferior ao mínimo.
+                Esta lista não é afetada pelo filtro de datas.
+            </p>
+
+            {% if estoque_baixo %}
+                <div class="tabela">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Produto</th>
+                                <th scope="col">Estoque atual</th>
+                                <th scope="col">Estoque mínimo</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for produto in estoque_baixo %}
+                                <tr>
+                                    <td>{{ produto.nome }}</td>
+
+                                    <td class="aviso">
+                                        {{ produto.estoque }}
+                                    </td>
+
+                                    <td>
+                                        {{ produto.estoque_minimo }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>Nenhum produto com estoque baixo.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>
