@@ -12,6 +12,7 @@ from gestao.views import (
     lista_vendas,
     nova_venda,
     confirmar_venda,
+    cancelar_venda,
     lista_caixa,
     novo_movimento,
     entradas_estoque,
@@ -69,6 +70,11 @@ urlpatterns = [
         "vendas/<int:pk>/confirmar/",
         confirmar_venda,
         name="confirmar_venda",
+    ),
+    path(
+        "vendas/<int:pk>/cancelar/",
+        cancelar_venda,
+        name="cancelar_venda",
     ),
 
     path(

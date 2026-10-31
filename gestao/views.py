@@ -1,24 +1,33 @@
 from datetime import date
 from decimal import Decimal
 
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.db import transaction
 from django.db.models import F, Q
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import ProdutoForm, ProdutoEdicaoForm, ClienteForm
-from .models import Cliente, Produto, Venda, ItemVenda, MovimentoCaixa
-from django.db import transaction
-
-from .forms import VendaForm, ItemVendaFormSet
-
-from django.utils import timezone
-
-from .forms import MovimentoCaixaForm
-
-from .forms import EntradaEstoqueForm
-from .models import EntradaEstoque
+from .forms import (
+    ProdutoForm,
+    ProdutoEdicaoForm,
+    ClienteForm,
+    VendaForm,
+    ItemVendaFormSet,
+    MovimentoCaixaForm,
+    EntradaEstoqueForm,
+    CancelamentoVendaForm,
+)
+from .models import (
+    Cliente,
+    Produto,
+    Venda,
+    ItemVenda,
+    MovimentoCaixa,
+    EntradaEstoque,
+)
+from .services import cancelar_venda_com_estoque
 
 
 @staff_member_required
@@ -43,7 +52,11 @@ def dashboard(request):
     except ValueError:
         erro = "Informe datas válidas."
 
-    vendas = Venda.objects.filter(confirmada=True)
+    vendas = Venda.objects.filter(
+        confirmada=True,
+        cancelada=False,
+    )
+
     movimentos = MovimentoCaixa.objects.all()
 
     if not erro:
@@ -70,12 +83,16 @@ def dashboard(request):
     )
 
     entradas = sum(
-        movimentos.filter(tipo="entrada").values_list("valor", flat=True),
+        movimentos.filter(
+            tipo="entrada"
+        ).values_list("valor", flat=True),
         Decimal("0.00"),
     )
 
     saidas = sum(
-        movimentos.filter(tipo="saida").values_list("valor", flat=True),
+        movimentos.filter(
+            tipo="saida"
+        ).values_list("valor", flat=True),
         Decimal("0.00"),
     )
 
@@ -85,15 +102,19 @@ def dashboard(request):
 
     if erro:
         periodo = "Período inválido — corrija as datas"
+
     elif inicio and fim:
         periodo = (
             f"De {inicio.strftime('%d/%m/%Y')} "
             f"até {fim.strftime('%d/%m/%Y')}"
         )
+
     elif inicio:
         periodo = f"A partir de {inicio.strftime('%d/%m/%Y')}"
+
     elif fim:
         periodo = f"Até {fim.strftime('%d/%m/%Y')}"
+
     else:
         periodo = "Todo o período"
 
@@ -112,12 +133,17 @@ def dashboard(request):
         "erro": erro,
     }
 
-    return render(request, "gestao/dashboard.html", contexto)
+    return render(
+        request,
+        "gestao/dashboard.html",
+        contexto,
+    )
 
 
 @staff_member_required
 def lista_produtos(request):
     busca = request.GET.get("busca", "").strip()
+
     produtos = Produto.objects.all().order_by("nome", "id")
 
     if busca:
@@ -144,6 +170,7 @@ def novo_produto(request):
         if form.is_valid():
             form.save()
             return redirect("lista_produtos")
+
     else:
         form = ProdutoForm()
 
@@ -162,11 +189,27 @@ def editar_produto(request, pk):
     produto = get_object_or_404(Produto, pk=pk)
 
     if request.method == "POST":
-        form = ProdutoEdicaoForm(request.POST, instance=produto)
+        form = ProdutoEdicaoForm(
+            request.POST,
+            instance=produto,
+        )
 
         if form.is_valid():
-            form.save()
+            produto_editado = form.save(commit=False)
+
+            # Atualiza somente os campos do formulário.
+            # Preserva o estoque mesmo se ele mudar durante a edição.
+            produto_editado.save(
+                update_fields=[
+                    "nome",
+                    "codigo",
+                    "preco",
+                    "estoque_minimo",
+                ]
+            )
+
             return redirect("lista_produtos")
+
     else:
         form = ProdutoEdicaoForm(instance=produto)
 
@@ -183,6 +226,7 @@ def editar_produto(request, pk):
 @staff_member_required
 def lista_clientes(request):
     busca = request.GET.get("busca", "").strip()
+
     clientes = Cliente.objects.all().order_by("nome", "id")
 
     if busca:
@@ -210,6 +254,7 @@ def novo_cliente(request):
         if form.is_valid():
             form.save()
             return redirect("lista_clientes")
+
     else:
         form = ClienteForm()
 
@@ -228,11 +273,15 @@ def editar_cliente(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
 
     if request.method == "POST":
-        form = ClienteForm(request.POST, instance=cliente)
+        form = ClienteForm(
+            request.POST,
+            instance=cliente,
+        )
 
         if form.is_valid():
             form.save()
             return redirect("lista_clientes")
+
     else:
         form = ClienteForm(instance=cliente)
 
@@ -244,13 +293,15 @@ def editar_cliente(request, pk):
             "editando": True,
         },
     )
+
+
 @staff_member_required
 def lista_vendas(request):
     busca = request.GET.get("busca", "").strip()
 
     vendas = (
         Venda.objects
-        .select_related("cliente")
+        .select_related("cliente", "cancelada_por")
         .prefetch_related("itens")
         .order_by("-data", "-id")
     )
@@ -258,8 +309,14 @@ def lista_vendas(request):
     if busca:
         filtro = Q(cliente__nome__icontains=busca)
 
-        if busca.isdigit():
-            filtro |= Q(pk=int(busca))
+        if busca.isascii() and busca.isdecimal():
+            numero = busca.lstrip("0") or "0"
+
+            if len(numero) <= 19:
+                numero_venda = int(numero)
+
+                if numero_venda <= 9223372036854775807:
+                    filtro |= Q(pk=numero_venda)
 
         vendas = vendas.filter(filtro)
 
@@ -280,12 +337,17 @@ def lista_vendas(request):
             "busca": busca,
         },
     )
+
+
 @staff_member_required
 def nova_venda(request):
     venda = Venda()
 
     if request.method == "POST":
-        form = VendaForm(request.POST, instance=venda)
+        form = VendaForm(
+            request.POST,
+            instance=venda,
+        )
 
         formset = ItemVendaFormSet(
             request.POST,
@@ -320,6 +382,8 @@ def nova_venda(request):
             "formset": formset,
         },
     )
+
+
 @staff_member_required
 @require_POST
 def confirmar_venda(request, pk):
@@ -330,13 +394,21 @@ def confirmar_venda(request, pk):
             alteradas = Venda.objects.filter(
                 pk=pk,
                 confirmada=False,
+                cancelada=False,
             ).update(confirmada=True)
 
             if not alteradas:
-                messages.warning(
-                    request,
-                    f"Venda {pk} já estava confirmada.",
-                )
+                venda = Venda.objects.get(pk=pk)
+
+                if venda.cancelada:
+                    aviso = (
+                        f"Venda {pk} cancelada. "
+                        "Não é possível confirmá-la novamente."
+                    )
+                else:
+                    aviso = f"Venda {pk} já estava confirmada."
+
+                messages.warning(request, aviso)
                 return redirect("lista_vendas")
 
             itens = list(
@@ -344,12 +416,17 @@ def confirmar_venda(request, pk):
             )
 
             if not itens:
-                raise ValueError("A venda não tem produtos.")
+                raise ValueError(
+                    "A venda não tem produtos."
+                )
 
             quantidades = {}
 
             for item in itens:
-                if item.quantidade < 1 or item.preco_unitario <= 0:
+                if (
+                    item.quantidade < 1
+                    or item.preco_unitario <= 0
+                ):
                     raise ValueError(
                         "Quantidade e preço devem ser positivos."
                     )
@@ -370,7 +447,9 @@ def confirmar_venda(request, pk):
                 )
 
                 if not atualizados:
-                    produto = Produto.objects.get(pk=produto_id)
+                    produto = Produto.objects.get(
+                        pk=produto_id
+                    )
 
                     raise ValueError(
                         f"Estoque insuficiente para {produto.nome}."
@@ -389,6 +468,55 @@ def confirmar_venda(request, pk):
         )
 
     return redirect("lista_vendas")
+
+
+@staff_member_required
+def cancelar_venda(request, pk):
+    venda = get_object_or_404(Venda, pk=pk)
+
+    if venda.cancelada or not venda.confirmada:
+        messages.warning(
+            request,
+            "A venda já foi cancelada ou não está confirmada.",
+        )
+        return redirect("lista_vendas")
+
+    if request.method == "POST":
+        form = CancelamentoVendaForm(request.POST)
+
+        if form.is_valid():
+            try:
+                cancelar_venda_com_estoque(
+                    venda_id=venda.pk,
+                    usuario=request.user,
+                    motivo=form.cleaned_data["motivo"],
+                )
+
+            except ValueError as erro:
+                form.add_error(None, str(erro))
+
+            else:
+                messages.success(
+                    request,
+                    f"Venda {pk} cancelada. "
+                    "Produtos devolvidos ao estoque.",
+                )
+
+                return redirect("lista_vendas")
+
+    else:
+        form = CancelamentoVendaForm()
+
+    return render(
+        request,
+        "gestao/venda_cancelar.html",
+        {
+            "venda": venda,
+            "form": form,
+        },
+    )
+
+
 @staff_member_required
 def lista_caixa(request):
     busca = request.GET.get("busca", "").strip()
@@ -397,10 +525,16 @@ def lista_caixa(request):
     if tipo not in ("entrada", "saida"):
         tipo = ""
 
-    movimentos = MovimentoCaixa.objects.all().order_by("-data", "-id")
+    movimentos = (
+        MovimentoCaixa.objects
+        .all()
+        .order_by("-data", "-id")
+    )
 
     if busca:
-        movimentos = movimentos.filter(descricao__icontains=busca)
+        movimentos = movimentos.filter(
+            descricao__icontains=busca
+        )
 
     if tipo:
         movimentos = movimentos.filter(tipo=tipo)
@@ -431,6 +565,8 @@ def lista_caixa(request):
             "saldo": entradas - saidas,
         },
     )
+
+
 @staff_member_required
 def novo_movimento(request):
     if request.method == "POST":
@@ -450,6 +586,8 @@ def novo_movimento(request):
         "gestao/caixa_form.html",
         {"form": form},
     )
+
+
 @staff_member_required
 def entradas_estoque(request):
     if request.method == "POST":

@@ -155,3 +155,14 @@ class EntradaEstoqueForm(forms.ModelForm):
                 }
             ),
         }
+class CancelamentoVendaForm(forms.Form):
+    motivo = forms.CharField(
+        label="Motivo do cancelamento",
+        max_length=200,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "placeholder": "Explique por que a venda será cancelada",
+            }
+        ),
+    )

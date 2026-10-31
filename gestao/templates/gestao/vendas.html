@@ -18,7 +18,7 @@
         }
 
         main {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: auto;
             padding: 32px 20px;
         }
@@ -66,6 +66,14 @@
             background: #cbd5e1;
         }
 
+        .perigo {
+            background: #b91c1c;
+        }
+
+        .perigo:hover {
+            background: #991b1b;
+        }
+
         input {
             width: 280px;
             max-width: 100%;
@@ -104,6 +112,7 @@
         td {
             padding: 14px 10px;
             text-align: left;
+            vertical-align: top;
             border-bottom: 1px solid #e2e8f0;
         }
 
@@ -119,6 +128,24 @@
         .pendente {
             color: #9a3412;
             font-weight: bold;
+        }
+
+        .cancelada {
+            color: #b91c1c;
+            font-weight: bold;
+        }
+
+        .motivo {
+            max-width: 280px;
+            margin: 8px 0;
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+        }
+
+        .historico {
+            display: block;
+            color: #475569;
+            line-height: 1.5;
         }
 
         .acao-venda {
@@ -173,8 +200,9 @@
         <h1>Vendas</h1>
 
         <p class="descricao">
-            Consulte as vendas registradas e confirme a baixa do estoque.
-            Confirmar uma venda não registra seu recebimento no caixa.
+            Consulte, confirme ou cancele vendas.
+            A confirmação baixa o estoque e o cancelamento devolve os produtos.
+            Os movimentos de dinheiro são registrados separadamente no caixa.
         </p>
 
         <nav aria-label="Navegação">
@@ -264,10 +292,25 @@
                                     </td>
 
                                     <td>
-                                        {% if venda.confirmada %}
+                                        {% if venda.cancelada %}
+                                            <span class="cancelada">
+                                                Cancelada
+                                            </span>
+
+                                            <p class="motivo">
+                                                {{ venda.motivo_cancelamento }}
+                                            </p>
+
+                                            <small class="historico">
+                                                {{ venda.data_cancelamento|date:"d/m/Y H:i" }}
+                                                · {{ venda.cancelada_por|default:"Não informado" }}
+                                            </small>
+
+                                        {% elif venda.confirmada %}
                                             <span class="confirmada">
                                                 Confirmada
                                             </span>
+
                                         {% else %}
                                             <span class="pendente">
                                                 Não confirmada
@@ -276,7 +319,19 @@
                                     </td>
 
                                     <td>
-                                        {% if not venda.confirmada %}
+                                        {% if venda.cancelada %}
+                                            —
+
+                                        {% elif venda.confirmada %}
+                                            <a
+                                                class="botao perigo"
+                                                href="{% url 'cancelar_venda' venda.pk %}"
+                                                aria-label="Cancelar venda {{ venda.pk }}"
+                                            >
+                                                Cancelar venda
+                                            </a>
+
+                                        {% else %}
                                             <form
                                                 class="acao-venda"
                                                 method="post"
@@ -292,8 +347,6 @@
                                                     Confirmar venda
                                                 </button>
                                             </form>
-                                        {% else %}
-                                            —
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -301,6 +354,7 @@
                         </tbody>
                     </table>
                 </div>
+
             {% else %}
                 {% if busca %}
                     <p>

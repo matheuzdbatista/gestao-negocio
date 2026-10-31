@@ -1,14 +1,17 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.conf import settings
 
 
 class Produto(models.Model):
     nome = models.CharField(max_length=100)
     codigo = models.CharField(max_length=30, unique=True)
-    preco = models.DecimalField(max_digits=10, decimal_places=2)
+    preco = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+    )
     estoque = models.PositiveIntegerField(default=0)
     estoque_minimo = models.PositiveIntegerField(default=5)
 
@@ -18,7 +21,10 @@ class Produto(models.Model):
 
 class Cliente(models.Model):
     nome = models.CharField(max_length=100)
-    telefone = models.CharField(max_length=20, blank=True)
+    telefone = models.CharField(
+        max_length=20,
+        blank=True,
+    )
     email = models.EmailField(blank=True)
 
     def __str__(self):
@@ -33,7 +39,33 @@ class Venda(models.Model):
         blank=True,
     )
     data = models.DateTimeField(auto_now_add=True)
-    confirmada = models.BooleanField(default=False, editable=False)
+    confirmada = models.BooleanField(
+        default=False,
+        editable=False,
+    )
+
+    cancelada = models.BooleanField(
+        default=False,
+        editable=False,
+    )
+    motivo_cancelamento = models.CharField(
+        max_length=200,
+        blank=True,
+        editable=False,
+    )
+    data_cancelamento = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    cancelada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        editable=False,
+        related_name="vendas_canceladas",
+    )
 
     class Meta:
         ordering = ["-data"]
@@ -65,14 +97,21 @@ class ItemVenda(models.Model):
     def __str__(self):
         return f"{self.quantidade} x {self.produto.nome}"
 
+
 class MovimentoCaixa(models.Model):
     TIPOS = [
         ("entrada", "Entrada"),
         ("saida", "Saída"),
     ]
 
-    descricao = models.CharField("descrição", max_length=150)
-    tipo = models.CharField(max_length=7, choices=TIPOS)
+    descricao = models.CharField(
+        "descrição",
+        max_length=150,
+    )
+    tipo = models.CharField(
+        max_length=7,
+        choices=TIPOS,
+    )
     valor = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -87,6 +126,8 @@ class MovimentoCaixa(models.Model):
 
     def __str__(self):
         return self.descricao
+
+
 class EntradaEstoque(models.Model):
     produto = models.ForeignKey(
         Produto,
@@ -96,12 +137,8 @@ class EntradaEstoque(models.Model):
     quantidade = models.PositiveIntegerField(
         validators=[MinValueValidator(1)],
     )
-    motivo = models.CharField(
-        max_length=200,
-    )
-    data = models.DateTimeField(
-        auto_now_add=True,
-    )
+    motivo = models.CharField(max_length=200)
+    data = models.DateTimeField(auto_now_add=True)
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
