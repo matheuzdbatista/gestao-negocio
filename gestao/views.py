@@ -27,11 +27,13 @@ from .models import (
     EntradaEstoque,
     ItemVenda,
     MovimentoCaixa,
+    MovimentoEstoque,
     Produto,
     Venda,
 )
 from .services import (
     cancelar_venda_com_estoque,
+    confirmar_venda_com_estoque,
     registrar_recebimento_venda,
     registrar_reembolso_venda,
 )
@@ -181,7 +183,19 @@ def novo_produto(request):
         form = ProdutoForm(request.POST)
 
         if form.is_valid():
-            form.save()
+            with transaction.atomic():
+                produto = form.save()
+
+                if produto.estoque > 0:
+                    MovimentoEstoque.objects.create(
+                        produto=produto,
+                        tipo="entrada",
+                        origem="inicial",
+                        quantidade=produto.estoque,
+                        saldo_apos=produto.estoque,
+                        motivo="Estoque inicial no cadastro do produto.",
+                        usuario=request.user,
+                    )
 
             messages.success(
                 request,
@@ -617,83 +631,10 @@ def confirmar_venda(request, pk):
     get_object_or_404(Venda, pk=pk)
 
     try:
-        with transaction.atomic():
-            alteradas = Venda.objects.filter(
-                pk=pk,
-                confirmada=False,
-                cancelada=False,
-            ).update(confirmada=True)
-
-            if not alteradas:
-                venda_atual = Venda.objects.get(pk=pk)
-
-                if venda_atual.cancelada:
-                    messages.warning(
-                        request,
-                        "Uma venda cancelada não pode ser confirmada.",
-                    )
-                else:
-                    messages.warning(
-                        request,
-                        "Esta venda já está confirmada.",
-                    )
-
-                return redirect("lista_vendas")
-
-            itens = list(
-                ItemVenda.objects.filter(venda_id=pk)
-            )
-
-            if not itens:
-                raise ValueError(
-                    "Não é possível confirmar uma venda sem itens."
-                )
-
-            quantidades = {}
-
-            for item in itens:
-                if item.quantidade < 1:
-                    raise ValueError(
-                        "Todos os itens devem ter quantidade "
-                        "maior que zero."
-                    )
-
-                if item.preco_unitario <= Decimal("0.00"):
-                    raise ValueError(
-                        "Todos os itens devem ter preço "
-                        "maior que zero."
-                    )
-
-                quantidades[item.produto_id] = (
-                    quantidades.get(item.produto_id, 0)
-                    + item.quantidade
-                )
-
-            for produto_id, quantidade in sorted(
-                quantidades.items()
-            ):
-                alterados = Produto.objects.filter(
-                    pk=produto_id,
-                    estoque__gte=quantidade,
-                ).update(
-                    estoque=F("estoque") - quantidade,
-                )
-
-                if not alterados:
-                    produto = Produto.objects.filter(
-                        pk=produto_id,
-                    ).first()
-
-                    nome_produto = (
-                        produto.nome
-                        if produto
-                        else f"Produto {produto_id}"
-                    )
-
-                    raise ValueError(
-                        f"Estoque insuficiente para {nome_produto}."
-                    )
-
+        confirmar_venda_com_estoque(
+            venda_id=pk,
+            usuario=request.user,
+        )
     except ValueError as erro:
         messages.error(
             request,
@@ -702,7 +643,8 @@ def confirmar_venda(request, pk):
     else:
         messages.success(
             request,
-            f"Venda {pk} confirmada. Estoque atualizado.",
+            f"Venda {pk} confirmada. "
+            "Estoque atualizado e histórico registrado.",
         )
 
     return redirect("lista_vendas")
@@ -855,11 +797,26 @@ def entradas_estoque(request):
                         "O produto informado não foi encontrado."
                     )
 
+                produto = Produto.objects.get(
+                    pk=entrada.produto_id,
+                )
+
                 entrada.save()
+
+                MovimentoEstoque.objects.create(
+                    produto=produto,
+                    tipo="entrada",
+                    origem="reposicao",
+                    quantidade=entrada.quantidade,
+                    saldo_apos=produto.estoque,
+                    motivo=entrada.motivo,
+                    usuario=request.user,
+                )
 
             messages.success(
                 request,
-                "Entrada registrada e estoque atualizado.",
+                "Entrada registrada, estoque atualizado "
+                "e histórico salvo.",
             )
 
             return redirect("entradas_estoque")

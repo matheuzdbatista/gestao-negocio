@@ -192,3 +192,75 @@ class EntradaEstoque(models.Model):
             f"{self.produto.nome}: "
             f"+{self.quantidade} unidades"
         )
+class MovimentoEstoque(models.Model):
+    TIPOS = [
+        ("entrada", "Entrada"),
+        ("saida", "Saída"),
+    ]
+
+    ORIGENS = [
+        ("inicial", "Saldo inicial"),
+        ("reposicao", "Reposição"),
+        ("venda", "Venda confirmada"),
+        ("cancelamento", "Cancelamento de venda"),
+        ("ajuste", "Ajuste de estoque"),
+    ]
+
+    produto = models.ForeignKey(
+        Produto,
+        on_delete=models.PROTECT,
+        related_name="movimentos_estoque",
+    )
+
+    tipo = models.CharField(
+        max_length=7,
+        choices=TIPOS,
+    )
+
+    origem = models.CharField(
+        max_length=15,
+        choices=ORIGENS,
+    )
+
+    quantidade = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)],
+    )
+
+    saldo_apos = models.PositiveIntegerField(
+        verbose_name="estoque após o movimento",
+    )
+
+    motivo = models.CharField(
+        max_length=200,
+    )
+
+    data = models.DateTimeField(auto_now_add=True)
+
+    venda = models.ForeignKey(
+        Venda,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="movimentos_estoque",
+    )
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="movimentos_estoque",
+    )
+
+    class Meta:
+        verbose_name = "movimento de estoque"
+        verbose_name_plural = "movimentos de estoque"
+        ordering = ["-data", "-id"]
+
+    def __str__(self):
+        sinal = "+" if self.tipo == "entrada" else "-"
+
+        return (
+            f"{self.produto.nome}: "
+            f"{sinal}{self.quantidade}"
+        )
