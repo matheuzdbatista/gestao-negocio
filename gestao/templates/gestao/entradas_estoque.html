@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Entradas de estoque | Painel de Gestão</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #f3f5f9;
+            color: #1e293b;
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: auto;
+            padding: 32px 20px;
+        }
+
+        .descricao {
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        nav,
+        .acoes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        .botao {
+            display: inline-block;
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 8px;
+            background: #1d4ed8;
+            color: white;
+            font: inherit;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .botao:hover {
+            background: #1e40af;
+        }
+
+        .painel {
+            margin-top: 24px;
+            padding: 24px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+        }
+
+        .campo {
+            max-width: 600px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #94a3b8;
+            border-radius: 8px;
+            background: white;
+            color: #1e293b;
+            font: inherit;
+        }
+
+        .errorlist {
+            color: #b91c1c;
+            line-height: 1.5;
+        }
+
+        .mensagem {
+            padding: 16px;
+            border: 1px solid #86efac;
+            border-radius: 8px;
+            background: #f0fdf4;
+            color: #166534;
+        }
+
+        .tabela {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 14px 10px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible {
+            outline: 3px solid #1e293b;
+            outline-offset: 3px;
+        }
+
+        @media (max-width: 480px) {
+            main {
+                padding: 20px 14px;
+            }
+
+            .painel {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Entradas de estoque</h1>
+
+        <p class="descricao">
+            Registre mercadorias recebidas para aumentar o estoque.
+            Esta operação não registra despesas no caixa.
+        </p>
+
+        <nav aria-label="Navegação">
+            <a class="botao" href="{% url 'lista_produtos' %}">
+                Produtos
+            </a>
+
+            <a class="botao" href="{% url 'dashboard' %}">
+                Dashboard
+            </a>
+        </nav>
+
+        {% for mensagem in messages %}
+            <p class="mensagem" role="status">
+                {{ mensagem }}
+            </p>
+        {% endfor %}
+
+        <section class="painel" aria-label="Registrar entrada">
+            <h2>Registrar entrada</h2>
+
+            <form method="post">
+                {% csrf_token %}
+
+                {{ form.non_field_errors }}
+
+                {% for campo in form %}
+                    <div class="campo">
+                        {{ campo.label_tag }}
+                        {{ campo }}
+                        {{ campo.errors }}
+                    </div>
+                {% endfor %}
+
+                <button class="botao" type="submit">
+                    Registrar entrada
+                </button>
+            </form>
+        </section>
+
+        <section class="painel" aria-label="Histórico de entradas">
+            <h2>Últimas 50 entradas</h2>
+
+            {% if entradas %}
+                <div class="tabela">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Data</th>
+                                <th scope="col">Produto</th>
+                                <th scope="col">Quantidade</th>
+                                <th scope="col">Motivo</th>
+                                <th scope="col">Responsável</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for entrada in entradas %}
+                                <tr>
+                                    <td>
+                                        {{ entrada.data|date:"d/m/Y H:i" }}
+                                    </td>
+                                    <td>{{ entrada.produto.nome }}</td>
+                                    <td>+{{ entrada.quantidade }}</td>
+                                    <td>{{ entrada.motivo }}</td>
+                                    <td>{{ entrada.usuario.get_username }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>Nenhuma entrada registrada.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

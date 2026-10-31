@@ -10,6 +10,8 @@ from .models import Venda, ItemVenda
 
 from .models import MovimentoCaixa
 
+from .models import EntradaEstoque
+
 
 class ProdutoForm(forms.ModelForm):
     class Meta:
@@ -132,5 +134,24 @@ class MovimentoCaixaForm(forms.ModelForm):
             "data": forms.DateInput(
                 format="%Y-%m-%d",
                 attrs={"type": "date"},
+            ),
+        }
+class EntradaEstoqueForm(forms.ModelForm):
+    class Meta:
+        model = EntradaEstoque
+        fields = ["produto", "quantidade", "motivo"]
+        labels = {
+            "produto": "Produto",
+            "quantidade": "Quantidade recebida",
+            "motivo": "Motivo",
+        }
+        widgets = {
+            "quantidade": forms.NumberInput(
+                attrs={"min": "1"}
+            ),
+            "motivo": forms.TextInput(
+                attrs={
+                    "placeholder": "Ex.: Reposição de mercadoria"
+                }
             ),
         }

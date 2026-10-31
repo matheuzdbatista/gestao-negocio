@@ -17,6 +17,9 @@ from django.utils import timezone
 
 from .forms import MovimentoCaixaForm
 
+from .forms import EntradaEstoqueForm
+from .models import EntradaEstoque
+
 
 @staff_member_required
 def dashboard(request):
@@ -446,4 +449,46 @@ def novo_movimento(request):
         request,
         "gestao/caixa_form.html",
         {"form": form},
+    )
+@staff_member_required
+def entradas_estoque(request):
+    if request.method == "POST":
+        form = EntradaEstoqueForm(request.POST)
+
+        if form.is_valid():
+            with transaction.atomic():
+                entrada = form.save(commit=False)
+                entrada.usuario = request.user
+
+                Produto.objects.filter(
+                    pk=entrada.produto_id
+                ).update(
+                    estoque=F("estoque") + entrada.quantidade
+                )
+
+                entrada.save()
+
+            messages.success(
+                request,
+                "Entrada registrada e estoque atualizado.",
+            )
+
+            return redirect("entradas_estoque")
+
+    else:
+        form = EntradaEstoqueForm()
+
+    entradas = (
+        EntradaEstoque.objects
+        .select_related("produto", "usuario")
+        .order_by("-data", "-id")[:50]
+    )
+
+    return render(
+        request,
+        "gestao/entradas_estoque.html",
+        {
+            "form": form,
+            "entradas": entradas,
+        },
     )

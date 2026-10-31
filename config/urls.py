@@ -14,6 +14,7 @@ from gestao.views import (
     confirmar_venda,
     lista_caixa,
     novo_movimento,
+    entradas_estoque,
 )
 
 
@@ -79,5 +80,11 @@ urlpatterns = [
         "caixa/novo/",
         novo_movimento,
         name="novo_movimento",
+    ),
+
+    path(
+        "estoque/entradas/",
+        entradas_estoque,
+        name="entradas_estoque",
     ),
 ]

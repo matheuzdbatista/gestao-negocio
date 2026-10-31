@@ -137,12 +137,16 @@
         <h1>Produtos</h1>
 
         <p class="descricao">
-            Consulta de preços e estoque atual.
+            Consulte preços, acompanhe o estoque e registre reposições.
         </p>
 
         <nav class="acoes" aria-label="Navegação">
             <a class="botao" href="{% url 'novo_produto' %}">
                 Novo produto
+            </a>
+
+            <a class="botao" href="{% url 'entradas_estoque' %}">
+                Entrada de estoque
             </a>
 
             <a
