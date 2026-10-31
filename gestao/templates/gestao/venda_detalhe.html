@@ -86,7 +86,8 @@
 
         a:focus-visible,
         button:focus-visible,
-        input:focus-visible {
+        input:focus-visible,
+        textarea:focus-visible {
             outline: 2px solid #1d4ed8;
             outline-offset: 3px;
         }
@@ -214,6 +215,12 @@
             color: #92400e;
         }
 
+        .mensagem.info {
+            border-color: #93c5fd;
+            background: #eff6ff;
+            color: #1e40af;
+        }
+
         .resumo-financeiro {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -238,7 +245,7 @@
             font-size: 24px;
         }
 
-        .form-recebimento {
+        .form-financeiro {
             max-width: 520px;
             margin-top: 20px;
         }
@@ -253,7 +260,8 @@
             font-weight: bold;
         }
 
-        input {
+        input:not([type="hidden"]),
+        textarea {
             display: block;
             width: 100%;
             min-height: 44px;
@@ -263,6 +271,11 @@
             background: white;
             color: #1e293b;
             font: inherit;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
         }
 
         .ajuda {
@@ -283,10 +296,6 @@
             border-radius: 8px;
             background: #fef2f2;
             color: #991b1b;
-        }
-
-        .erros ul {
-            margin: 0;
         }
 
         @media (max-width: 600px) {
@@ -316,7 +325,8 @@
         <h1>Venda nº {{ venda.pk }}</h1>
 
         <p class="descricao">
-            Consulte os produtos, a situação e os recebimentos desta venda.
+            Consulte os produtos, a situação, os recebimentos e os reembolsos
+            desta venda.
         </p>
 
         <nav class="acoes" aria-label="Navegação da venda">
@@ -345,9 +355,7 @@
             <dl class="dados">
                 <div>
                     <dt>Cliente</dt>
-                    <dd>
-                        {{ venda.cliente|default:"Não informado" }}
-                    </dd>
+                    <dd>{{ venda.cliente|default:"Não informado" }}</dd>
                 </div>
 
                 <div>
@@ -385,15 +393,11 @@
                             <tr>
                                 <th scope="col">Produto</th>
                                 <th scope="col">Código atual</th>
-                                <th scope="col" class="numero">
-                                    Quantidade
-                                </th>
+                                <th scope="col" class="numero">Quantidade</th>
                                 <th scope="col" class="numero">
                                     Preço unitário
                                 </th>
-                                <th scope="col" class="numero">
-                                    Subtotal
-                                </th>
+                                <th scope="col" class="numero">Subtotal</th>
                             </tr>
                         </thead>
 
@@ -461,7 +465,8 @@
 
                 <p class="aviso">
                     Os produtos foram devolvidos ao estoque.
-                    O cancelamento não altera automaticamente o caixa.
+                    A devolução do dinheiro é registrada separadamente
+                    na seção de reembolsos.
                 </p>
             </section>
         {% else %}
@@ -527,9 +532,8 @@
                 </p>
 
                 <p>
-                    Os recebimentos anteriores permanecem no histórico.
-                    Eventuais devoluções de dinheiro devem ser conferidas
-                    no caixa.
+                    Os recebimentos anteriores permanecem no histórico,
+                    mesmo quando o dinheiro é reembolsado.
                 </p>
             {% elif not venda.confirmada %}
                 <p class="pendente">
@@ -567,9 +571,11 @@
                 <form
                     method="post"
                     action="{% url 'detalhe_venda' venda.pk %}"
-                    class="form-recebimento"
+                    class="form-financeiro"
                 >
                     {% csrf_token %}
+
+                    <input type="hidden" name="acao" value="receber">
 
                     <div class="campo">
                         <label for="{{ form_recebimento.valor.id_for_label }}">
@@ -635,6 +641,120 @@
                 <p>Nenhum recebimento vinculado a esta venda.</p>
             {% endif %}
         </section>
+
+        {% if venda.cancelada %}
+            <section class="painel" aria-labelledby="titulo-reembolsos">
+                <h2 id="titulo-reembolsos">Reembolsos da venda</h2>
+
+                <div class="resumo-financeiro">
+                    <div class="indicador">
+                        <span>Total devolvido</span>
+                        <strong>
+                            R$ {{ total_reembolsado|floatformat:2 }}
+                        </strong>
+                    </div>
+
+                    <div class="indicador">
+                        <span>Valor restante a devolver</span>
+                        <strong>
+                            R$ {{ valor_a_reembolsar|floatformat:2 }}
+                        </strong>
+                    </div>
+                </div>
+
+                {% if form_reembolso.errors %}
+                    <div class="erros" role="alert">
+                        <p><strong>Confira o reembolso:</strong></p>
+
+                        {{ form_reembolso.non_field_errors }}
+
+                        {% for field in form_reembolso %}
+                            {% for error in field.errors %}
+                                <p>{{ field.label }}: {{ error }}</p>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if pode_reembolsar %}
+                    <div class="alerta">
+                        Registre somente dinheiro efetivamente devolvido
+                        ao cliente. Este registro criará uma saída no caixa.
+                        Confira se a devolução já foi lançada antes de continuar.
+                    </div>
+
+                    <form
+                        method="post"
+                        action="{% url 'detalhe_venda' venda.pk %}"
+                        class="form-financeiro"
+                    >
+                        {% csrf_token %}
+
+                        <input
+                            type="hidden"
+                            name="acao"
+                            value="reembolsar"
+                        >
+
+                        {% for field in form_reembolso %}
+                            <div class="campo">
+                                <label for="{{ field.id_for_label }}">
+                                    {{ field.label }}
+                                </label>
+
+                                {{ field }}
+                            </div>
+                        {% endfor %}
+
+                        <button type="submit" class="botao perigo">
+                            Registrar dinheiro devolvido
+                        </button>
+                    </form>
+
+                    <p class="ajuda">
+                        Reembolsos parciais são permitidos.
+                        O valor não pode ultrapassar o restante a devolver.
+                    </p>
+                {% else %}
+                    <p>
+                        Não há valor disponível para novos reembolsos,
+                        considerando os movimentos vinculados a esta venda.
+                    </p>
+                {% endif %}
+
+                <h3>Histórico de reembolsos</h3>
+
+                {% if reembolsos %}
+                    <div class="tabela">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Data</th>
+                                    <th scope="col">Descrição</th>
+                                    <th scope="col" class="numero">Valor</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for movimento in reembolsos %}
+                                    <tr>
+                                        <td class="data">
+                                            {{ movimento.data|date:"d/m/Y" }}
+                                        </td>
+                                        <td>{{ movimento.descricao }}</td>
+                                        <td class="numero">
+                                            R$ {{ movimento.valor|floatformat:2 }}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p>Nenhum reembolso vinculado a esta venda.</p>
+                {% endif %}
+            </section>
+        {% endif %}
     </main>
 </body>
 </html>

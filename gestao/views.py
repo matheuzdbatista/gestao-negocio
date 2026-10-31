@@ -19,6 +19,7 @@ from .forms import (
     ProdutoEdicaoForm,
     ProdutoForm,
     RecebimentoVendaForm,
+    ReembolsoVendaForm,
     VendaForm,
 )
 from .models import (
@@ -32,6 +33,7 @@ from .models import (
 from .services import (
     cancelar_venda_com_estoque,
     registrar_recebimento_venda,
+    registrar_reembolso_venda,
 )
 
 
@@ -432,42 +434,94 @@ def detalhe_venda(request, pk):
         pk=pk,
     )
 
+    form_recebimento = RecebimentoVendaForm(
+        initial={
+            "data": timezone.localdate(),
+        }
+    )
+
+    form_reembolso = ReembolsoVendaForm(
+        initial={
+            "data": timezone.localdate(),
+        }
+    )
+
     if request.method == "POST":
-        form_recebimento = RecebimentoVendaForm(request.POST)
+        acao = request.POST.get("acao", "receber")
 
-        if form_recebimento.is_valid():
-            try:
-                registrar_recebimento_venda(
-                    venda_id=venda.pk,
-                    valor=form_recebimento.cleaned_data["valor"],
-                    data=form_recebimento.cleaned_data["data"],
-                )
-            except ValueError as erro:
-                form_recebimento.add_error(
-                    None,
-                    str(erro),
-                )
-            except ValidationError as erro:
-                form_recebimento.add_error(
-                    None,
-                    " ".join(erro.messages),
-                )
-            else:
-                messages.success(
-                    request,
-                    "Recebimento registrado no caixa com sucesso.",
-                )
+        if acao == "receber":
+            form_recebimento = RecebimentoVendaForm(request.POST)
 
-                return redirect(
-                    "detalhe_venda",
-                    pk=venda.pk,
-                )
-    else:
-        form_recebimento = RecebimentoVendaForm(
-            initial={
-                "data": timezone.localdate(),
-            }
-        )
+            if form_recebimento.is_valid():
+                try:
+                    registrar_recebimento_venda(
+                        venda_id=venda.pk,
+                        valor=form_recebimento.cleaned_data["valor"],
+                        data=form_recebimento.cleaned_data["data"],
+                    )
+                except ValueError as erro:
+                    form_recebimento.add_error(
+                        None,
+                        str(erro),
+                    )
+                except ValidationError as erro:
+                    form_recebimento.add_error(
+                        None,
+                        " ".join(erro.messages),
+                    )
+                else:
+                    messages.success(
+                        request,
+                        "Recebimento registrado no caixa com sucesso.",
+                    )
+
+                    return redirect(
+                        "detalhe_venda",
+                        pk=venda.pk,
+                    )
+
+        elif acao == "reembolsar":
+            form_reembolso = ReembolsoVendaForm(request.POST)
+
+            if form_reembolso.is_valid():
+                try:
+                    registrar_reembolso_venda(
+                        venda_id=venda.pk,
+                        valor=form_reembolso.cleaned_data["valor"],
+                        data=form_reembolso.cleaned_data["data"],
+                        motivo=form_reembolso.cleaned_data["motivo"],
+                    )
+                except ValueError as erro:
+                    form_reembolso.add_error(
+                        None,
+                        str(erro),
+                    )
+                except ValidationError as erro:
+                    form_reembolso.add_error(
+                        None,
+                        " ".join(erro.messages),
+                    )
+                else:
+                    messages.success(
+                        request,
+                        "Reembolso registrado como saída no caixa.",
+                    )
+
+                    return redirect(
+                        "detalhe_venda",
+                        pk=venda.pk,
+                    )
+
+        else:
+            messages.error(
+                request,
+                "Ação inválida.",
+            )
+
+            return redirect(
+                "detalhe_venda",
+                pk=venda.pk,
+            )
 
     venda.refresh_from_db()
 
@@ -487,8 +541,19 @@ def detalhe_venda(request, pk):
         ).order_by("-data", "-id")
     )
 
+    reembolsos = list(
+        venda.movimentos_caixa.filter(
+            tipo="saida",
+        ).order_by("-data", "-id")
+    )
+
     total_recebido = sum(
         (movimento.valor for movimento in recebimentos),
+        Decimal("0.00"),
+    )
+
+    total_reembolsado = sum(
+        (movimento.valor for movimento in reembolsos),
         Decimal("0.00"),
     )
 
@@ -497,10 +562,21 @@ def detalhe_venda(request, pk):
         Decimal("0.00"),
     )
 
+    valor_a_reembolsar = max(
+        total_recebido - total_reembolsado,
+        Decimal("0.00"),
+    )
+
     pode_receber = (
         venda.confirmada
         and not venda.cancelada
         and valor_pendente > Decimal("0.00")
+    )
+
+    pode_reembolsar = (
+        venda.confirmada
+        and venda.cancelada
+        and valor_a_reembolsar > Decimal("0.00")
     )
 
     return render(
@@ -515,6 +591,11 @@ def detalhe_venda(request, pk):
             "valor_pendente": valor_pendente,
             "pode_receber": pode_receber,
             "form_recebimento": form_recebimento,
+            "reembolsos": reembolsos,
+            "total_reembolsado": total_reembolsado,
+            "valor_a_reembolsar": valor_a_reembolsar,
+            "pode_reembolsar": pode_reembolsar,
+            "form_reembolso": form_reembolso,
         },
     )
 

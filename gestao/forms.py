@@ -191,3 +191,39 @@ class RecebimentoVendaForm(forms.Form):
             },
         ),
     )
+class ReembolsoVendaForm(forms.Form):
+    valor = forms.DecimalField(
+        label="Valor a devolver",
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+        widget=forms.NumberInput(
+            attrs={
+                "min": "0.01",
+                "step": "0.01",
+                "placeholder": "Ex.: 16,00",
+            }
+        ),
+    )
+
+    data = forms.DateField(
+        label="Data do reembolso",
+        input_formats=["%Y-%m-%d", "%d/%m/%Y"],
+        widget=forms.DateInput(
+            format="%Y-%m-%d",
+            attrs={
+                "type": "date",
+            },
+        ),
+    )
+
+    motivo = forms.CharField(
+        label="Motivo do reembolso",
+        max_length=100,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "placeholder": "Explique o motivo da devolução do dinheiro",
+            }
+        ),
+    )

@@ -158,3 +158,94 @@ def registrar_recebimento_venda(venda_id, valor, data):
         movimento.save()
 
         return movimento
+def registrar_reembolso_venda(venda_id, valor, data, motivo):
+    if not isinstance(valor, Decimal):
+        raise ValueError("Informe um valor monetário válido.")
+
+    if not valor.is_finite() or valor <= Decimal("0.00"):
+        raise ValueError(
+            "O valor do reembolso deve ser maior que zero."
+        )
+
+    if valor > Decimal("99999999.99"):
+        raise ValueError(
+            "O valor informado ultrapassa o limite permitido."
+        )
+
+    if valor != valor.quantize(Decimal("0.01")):
+        raise ValueError(
+            "Informe um valor com até duas casas decimais."
+        )
+
+    motivo = motivo.strip()
+
+    if not motivo:
+        raise ValueError("Informe o motivo do reembolso.")
+
+    if len(motivo) > 100:
+        raise ValueError(
+            "O motivo deve ter até 100 caracteres."
+        )
+
+    with transaction.atomic():
+        # Serializa os reembolsos desta venda para que duas
+        # operações não utilizem o mesmo saldo disponível.
+        alteradas = Venda.objects.filter(
+            pk=venda_id,
+            confirmada=True,
+            cancelada=True,
+        ).update(cancelada=True)
+
+        if not alteradas:
+            raise ValueError(
+                "Só é possível reembolsar uma venda cancelada."
+            )
+
+        recebido = sum(
+            MovimentoCaixa.objects.filter(
+                venda_id=venda_id,
+                tipo="entrada",
+            ).values_list("valor", flat=True),
+            Decimal("0.00"),
+        )
+
+        devolvido = sum(
+            MovimentoCaixa.objects.filter(
+                venda_id=venda_id,
+                tipo="saida",
+            ).values_list("valor", flat=True),
+            Decimal("0.00"),
+        )
+
+        disponivel = recebido - devolvido
+
+        if disponivel <= Decimal("0.00"):
+            raise ValueError(
+                "Esta venda não possui valor disponível "
+                "para reembolso."
+            )
+
+        if valor > disponivel:
+            disponivel_formatado = (
+                f"{disponivel:.2f}".replace(".", ",")
+            )
+
+            raise ValueError(
+                "O reembolso não pode ultrapassar o valor "
+                f"disponível de R$ {disponivel_formatado}."
+            )
+
+        movimento = MovimentoCaixa(
+            venda_id=venda_id,
+            descricao=(
+                f"Reembolso da Venda {venda_id}: {motivo}"
+            ),
+            tipo="saida",
+            valor=valor,
+            data=data,
+        )
+
+        movimento.full_clean()
+        movimento.save()
+
+        return movimento
