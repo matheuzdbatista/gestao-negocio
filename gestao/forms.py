@@ -8,6 +8,8 @@ from django.forms import inlineformset_factory
 
 from .models import Venda, ItemVenda
 
+from .models import MovimentoCaixa
+
 
 class ProdutoForm(forms.ModelForm):
     class Meta:
@@ -113,3 +115,22 @@ ItemVendaFormSet = inlineformset_factory(
     validate_max=True,
     can_delete=False,
 )
+class MovimentoCaixaForm(forms.ModelForm):
+    class Meta:
+        model = MovimentoCaixa
+        fields = ["descricao", "tipo", "valor", "data"]
+        labels = {
+            "descricao": "Descrição",
+            "tipo": "Tipo",
+            "valor": "Valor (R$)",
+            "data": "Data do movimento",
+        }
+        widgets = {
+            "valor": forms.NumberInput(
+                attrs={"min": "0.01", "step": "0.01"}
+            ),
+            "data": forms.DateInput(
+                format="%Y-%m-%d",
+                attrs={"type": "date"},
+            ),
+        }

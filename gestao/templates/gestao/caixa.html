@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Caixa | Painel de Gestão</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #f3f5f9;
+            color: #1e293b;
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: auto;
+            padding: 32px 20px;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .descricao {
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        nav,
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        .botao {
+            display: inline-block;
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 8px;
+            background: #1d4ed8;
+            color: white;
+            font: inherit;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .botao:hover {
+            background: #1e40af;
+        }
+
+        .secundario {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .secundario:hover {
+            background: #cbd5e1;
+        }
+
+        input,
+        select {
+            max-width: 100%;
+            padding: 12px;
+            border: 1px solid #94a3b8;
+            border-radius: 8px;
+            background: white;
+            color: #1e293b;
+            font: inherit;
+        }
+
+        .indicadores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .cartao,
+        .painel {
+            padding: 24px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: white;
+        }
+
+        .cartao h2 {
+            margin-top: 0;
+            font-size: 15px;
+            color: #475569;
+        }
+
+        .valor {
+            margin: 12px 0 0;
+            font-size: 30px;
+            font-weight: bold;
+            overflow-wrap: anywhere;
+        }
+
+        .entrada {
+            color: #166534;
+        }
+
+        .saida {
+            color: #b91c1c;
+        }
+
+        .tabela {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 14px 10px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            color: #475569;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible {
+            outline: 3px solid #1e293b;
+            outline-offset: 3px;
+        }
+
+        @media (max-width: 480px) {
+            main {
+                padding: 20px 14px;
+            }
+
+            .painel {
+                padding: 16px;
+            }
+
+            input {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Movimentos de caixa</h1>
+
+        <p class="descricao">
+            Consulte e registre os recebimentos e as despesas do negócio.
+        </p>
+
+        <nav aria-label="Navegação">
+            <a class="botao" href="{% url 'novo_movimento' %}">
+                Novo movimento
+            </a>
+
+            <a
+                class="botao secundario"
+                href="{% url 'dashboard' %}"
+            >
+                Voltar ao dashboard
+            </a>
+
+            <a
+                class="botao secundario"
+                href="{% url 'admin:gestao_movimentocaixa_changelist' %}"
+            >
+                Gerenciar no painel
+            </a>
+        </nav>
+
+        <form
+            method="get"
+            action="{% url 'lista_caixa' %}"
+            aria-label="Filtro de movimentos de caixa"
+        >
+            <label for="busca">Descrição:</label>
+
+            <input
+                type="search"
+                id="busca"
+                name="busca"
+                value="{{ busca }}"
+                placeholder="Ex.: Recebimento"
+            >
+
+            <label for="tipo">Tipo:</label>
+
+            <select id="tipo" name="tipo">
+                <option value="">Todos</option>
+
+                <option
+                    value="entrada"
+                    {% if tipo == "entrada" %}selected{% endif %}
+                >
+                    Entrada
+                </option>
+
+                <option
+                    value="saida"
+                    {% if tipo == "saida" %}selected{% endif %}
+                >
+                    Saída
+                </option>
+            </select>
+
+            <button class="botao" type="submit">
+                Filtrar
+            </button>
+
+            <a
+                class="botao secundario"
+                href="{% url 'lista_caixa' %}"
+            >
+                Limpar
+            </a>
+        </form>
+
+        <p class="descricao">
+            Os totais abaixo consideram somente os movimentos encontrados
+            pelos filtros. Sem filtros, consideram todos os lançamentos.
+        </p>
+
+        <section class="indicadores" aria-label="Resumo dos movimentos">
+            <article class="cartao">
+                <h2>Entradas encontradas</h2>
+                <p class="valor entrada">
+                    R$ {{ entradas|floatformat:2 }}
+                </p>
+            </article>
+
+            <article class="cartao">
+                <h2>Saídas encontradas</h2>
+                <p class="valor saida">
+                    R$ {{ saidas|floatformat:2 }}
+                </p>
+            </article>
+
+            <article class="cartao">
+                <h2>Resultado dos movimentos</h2>
+                <p class="valor">
+                    R$ {{ saldo|floatformat:2 }}
+                </p>
+            </article>
+        </section>
+
+        <p class="descricao">
+            O resultado corresponde às entradas menos as saídas encontradas,
+            sem incluir um saldo inicial.
+            Os recebimentos das vendas são registrados manualmente.
+        </p>
+
+        <section class="painel" aria-label="Lista de movimentos">
+            {% if movimentos %}
+                <div class="tabela">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Data</th>
+                                <th scope="col">Descrição</th>
+                                <th scope="col">Tipo</th>
+                                <th scope="col">Valor</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for movimento in movimentos %}
+                                <tr>
+                                    <td>
+                                        {{ movimento.data|date:"d/m/Y" }}
+                                    </td>
+
+                                    <td>
+                                        {{ movimento.descricao }}
+                                    </td>
+
+                                    <td>
+                                        {{ movimento.get_tipo_display }}
+                                    </td>
+
+                                    <td class="{{ movimento.tipo }}">
+                                        R$ {{ movimento.valor|floatformat:2 }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>Nenhum movimento encontrado.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

@@ -13,6 +13,10 @@ from django.db import transaction
 
 from .forms import VendaForm, ItemVendaFormSet
 
+from django.utils import timezone
+
+from .forms import MovimentoCaixaForm
+
 
 @staff_member_required
 def dashboard(request):
@@ -382,3 +386,64 @@ def confirmar_venda(request, pk):
         )
 
     return redirect("lista_vendas")
+@staff_member_required
+def lista_caixa(request):
+    busca = request.GET.get("busca", "").strip()
+    tipo = request.GET.get("tipo", "")
+
+    if tipo not in ("entrada", "saida"):
+        tipo = ""
+
+    movimentos = MovimentoCaixa.objects.all().order_by("-data", "-id")
+
+    if busca:
+        movimentos = movimentos.filter(descricao__icontains=busca)
+
+    if tipo:
+        movimentos = movimentos.filter(tipo=tipo)
+
+    entradas = sum(
+        movimentos.filter(
+            tipo="entrada"
+        ).values_list("valor", flat=True),
+        Decimal("0.00"),
+    )
+
+    saidas = sum(
+        movimentos.filter(
+            tipo="saida"
+        ).values_list("valor", flat=True),
+        Decimal("0.00"),
+    )
+
+    return render(
+        request,
+        "gestao/caixa.html",
+        {
+            "movimentos": movimentos,
+            "busca": busca,
+            "tipo": tipo,
+            "entradas": entradas,
+            "saidas": saidas,
+            "saldo": entradas - saidas,
+        },
+    )
+@staff_member_required
+def novo_movimento(request):
+    if request.method == "POST":
+        form = MovimentoCaixaForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+            return redirect("lista_caixa")
+
+    else:
+        form = MovimentoCaixaForm(
+            initial={"data": timezone.localdate()}
+        )
+
+    return render(
+        request,
+        "gestao/caixa_form.html",
+        {"form": form},
+    )
