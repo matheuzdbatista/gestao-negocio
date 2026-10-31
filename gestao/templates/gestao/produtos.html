@@ -2,7 +2,8 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Produtos | Painel de Gestão</title>
 
     <style>
@@ -15,41 +16,45 @@
             background: #f3f5f9;
             color: #1e293b;
             font-family: Arial, sans-serif;
+            line-height: 1.5;
         }
 
         main {
+            width: calc(100% - 32px);
             max-width: 1100px;
-            margin: auto;
-            padding: 32px 20px;
+            margin: 48px auto;
         }
 
         h1 {
             margin-bottom: 8px;
+            font-size: 32px;
         }
 
         .descricao {
+            margin-bottom: 24px;
             color: #475569;
-            line-height: 1.5;
         }
 
-        .acoes,
-        form {
+        .navegacao,
+        .filtros {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             gap: 12px;
-            margin: 24px 0;
+            margin-bottom: 24px;
         }
 
         .botao {
             display: inline-block;
             padding: 12px 18px;
-            border: 0;
+            border: none;
             border-radius: 8px;
             background: #1d4ed8;
             color: white;
-            text-decoration: none;
             font: inherit;
+            text-align: center;
+            text-decoration: none;
+            white-space: nowrap;
             cursor: pointer;
         }
 
@@ -66,10 +71,11 @@
             background: #cbd5e1;
         }
 
-        input {
-            width: 260px;
+        .filtros input {
+            width: 280px;
             max-width: 100%;
-            padding: 12px;
+            min-height: 44px;
+            padding: 10px 12px;
             border: 1px solid #94a3b8;
             border-radius: 8px;
             background: white;
@@ -77,16 +83,14 @@
             font: inherit;
         }
 
-        a:focus-visible,
-        button:focus-visible,
-        input:focus-visible {
-            outline: 3px solid #1e293b;
+        :focus-visible {
+            outline: 2px solid #1d4ed8;
             outline-offset: 3px;
         }
 
         .painel {
             padding: 24px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #dbe3ef;
             border-radius: 12px;
             background: white;
         }
@@ -103,30 +107,83 @@
         th,
         td {
             padding: 14px 10px;
+            border-bottom: 1px solid #dbe3ef;
             text-align: left;
-            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
         }
 
         th {
             color: #475569;
         }
 
+        .valor {
+            white-space: nowrap;
+        }
+
+        .normal {
+            color: #15803d;
+        }
+
         .baixo {
-            color: #9a3412;
+            color: #b45309;
             font-weight: bold;
         }
 
-        @media (max-width: 480px) {
+        .esgotado {
+            color: #b91c1c;
+            font-weight: bold;
+        }
+
+        .mensagem {
+            margin-bottom: 16px;
+            padding: 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .mensagem.success {
+            border-color: #86efac;
+            background: #f0fdf4;
+            color: #166534;
+        }
+
+        .mensagem.error {
+            border-color: #fca5a5;
+            background: #fef2f2;
+            color: #991b1b;
+        }
+
+        .mensagem.warning {
+            border-color: #fcd34d;
+            background: #fffbeb;
+            color: #92400e;
+        }
+
+        .ajuda {
+            margin-top: 20px;
+            margin-bottom: 0;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
             main {
-                padding: 20px 14px;
+                margin: 24px auto;
             }
 
             .painel {
                 padding: 16px;
             }
 
-            input {
+            .filtros label,
+            .filtros input {
                 width: 100%;
+            }
+
+            th,
+            td {
+                padding: 12px 8px;
             }
         }
     </style>
@@ -140,25 +197,29 @@
             Consulte preços, acompanhe o estoque e registre reposições.
         </p>
 
-        <nav class="acoes" aria-label="Navegação">
-            <a class="botao" href="{% url 'novo_produto' %}">
+        <nav class="navegacao" aria-label="Navegação de produtos">
+            <a href="{% url 'novo_produto' %}" class="botao">
                 Novo produto
             </a>
 
-            <a class="botao" href="{% url 'entradas_estoque' %}">
+            <a href="{% url 'entradas_estoque' %}" class="botao">
                 Entrada de estoque
             </a>
 
             <a
+                href="{% url 'historico_estoque' %}"
                 class="botao secundario"
-                href="{% url 'dashboard' %}"
             >
+                Histórico de estoque
+            </a>
+
+            <a href="{% url 'dashboard' %}" class="botao secundario">
                 Voltar ao dashboard
             </a>
 
             <a
-                class="botao secundario"
                 href="{% url 'admin:gestao_produto_changelist' %}"
+                class="botao secundario"
             >
                 Gerenciar no painel
             </a>
@@ -167,7 +228,8 @@
         <form
             method="get"
             action="{% url 'lista_produtos' %}"
-            aria-label="Pesquisa de produtos"
+            class="filtros"
+            role="search"
         >
             <label for="busca">Nome ou código:</label>
 
@@ -175,21 +237,27 @@
                 type="search"
                 id="busca"
                 name="busca"
-                value="{{ busca }}"
+                value="{{ busca|default:'' }}"
                 placeholder="Ex.: Caneta ou CAN001"
             >
 
-            <button class="botao" type="submit">
+            <button type="submit" class="botao">
                 Pesquisar
             </button>
 
             <a
-                class="botao secundario"
                 href="{% url 'lista_produtos' %}"
+                class="botao secundario"
             >
                 Limpar
             </a>
         </form>
+
+        {% for message in messages %}
+            <div class="mensagem {{ message.tags }}" role="status">
+                {{ message }}
+            </div>
+        {% endfor %}
 
         <section class="painel" aria-label="Lista de produtos">
             {% if produtos %}
@@ -214,7 +282,7 @@
 
                                     <td>{{ produto.codigo }}</td>
 
-                                    <td>
+                                    <td class="valor">
                                         R$ {{ produto.preco|floatformat:2 }}
                                     </td>
 
@@ -223,19 +291,25 @@
                                     <td>{{ produto.estoque_minimo }}</td>
 
                                     <td>
-                                        {% if produto.estoque <= produto.estoque_minimo %}
+                                        {% if produto.estoque == 0 %}
+                                            <span class="esgotado">
+                                                Esgotado
+                                            </span>
+                                        {% elif produto.estoque <= produto.estoque_minimo %}
                                             <span class="baixo">
                                                 Estoque baixo
                                             </span>
                                         {% else %}
-                                            Normal
+                                            <span class="normal">
+                                                Normal
+                                            </span>
                                         {% endif %}
                                     </td>
 
                                     <td>
                                         <a
-                                            class="botao"
                                             href="{% url 'editar_produto' produto.pk %}"
+                                            class="botao"
                                             aria-label="Editar {{ produto.nome }}"
                                         >
                                             Editar
@@ -246,6 +320,13 @@
                         </tbody>
                     </table>
                 </div>
+
+                <p class="ajuda">
+                    Produtos com quantidade igual ou inferior ao mínimo
+                    precisam de atenção. Use Entrada de estoque para
+                    registrar reposições e Histórico de estoque para
+                    consultar as movimentações.
+                </p>
             {% else %}
                 {% if busca %}
                     <p>
