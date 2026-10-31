@@ -25,6 +25,10 @@
             margin: 48px auto;
         }
 
+        h1 {
+            margin-bottom: 8px;
+        }
+
         .descricao {
             color: #475569;
         }
@@ -47,7 +51,7 @@
             font-weight: bold;
         }
 
-        input,
+        input:not([type="hidden"]),
         select,
         textarea {
             display: block;
@@ -94,12 +98,18 @@
             background: #1d4ed8;
             color: white;
             font: inherit;
+            text-align: center;
             text-decoration: none;
             cursor: pointer;
         }
 
         .botao:hover {
             background: #1e40af;
+        }
+
+        .botao:disabled {
+            opacity: 0.6;
+            cursor: wait;
         }
 
         .secundario {
@@ -112,8 +122,28 @@
         }
 
         .errorlist {
-            color: #b91c1c;
             padding-left: 20px;
+            color: #b91c1c;
+        }
+
+        .erros {
+            margin-bottom: 24px;
+            padding: 12px 16px;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            background: #fef2f2;
+            color: #991b1b;
+        }
+
+        .erros .errorlist {
+            margin: 0;
+        }
+
+        .ajuda {
+            margin-top: 20px;
+            margin-bottom: 0;
+            color: #475569;
+            font-size: 14px;
         }
 
         @media (max-width: 600px) {
@@ -145,11 +175,21 @@
                 O ajuste não cria movimentos no caixa.
             </div>
 
-            <form method="post" action="{% url 'ajuste_estoque' %}">
+            <form
+                method="post"
+                action="{% url 'ajuste_estoque' %}"
+                id="form-ajuste"
+            >
                 {% csrf_token %}
 
+                <input
+                    type="hidden"
+                    name="chave_operacao"
+                    value="{{ chave_operacao }}"
+                >
+
                 {% if form.non_field_errors %}
-                    <div role="alert">
+                    <div class="erros" role="alert">
                         {{ form.non_field_errors }}
                     </div>
                 {% endif %}
@@ -166,7 +206,11 @@
                 {% endfor %}
 
                 <div class="acoes">
-                    <button type="submit" class="botao">
+                    <button
+                        type="submit"
+                        class="botao"
+                        id="registrar-ajuste"
+                    >
                         Registrar ajuste
                     </button>
 
@@ -177,8 +221,54 @@
                         Cancelar
                     </a>
                 </div>
+
+                <p
+                    id="status-envio"
+                    class="ajuda"
+                    role="status"
+                    aria-live="polite"
+                ></p>
             </form>
+
+            <p class="ajuda">
+                Para registrar outra operação, abra novamente a página
+                de ajuste. Consulte os registros em
+                <a href="{% url 'historico_estoque' %}">
+                    Histórico de estoque
+                </a>.
+            </p>
         </section>
     </main>
+
+    <script>
+        (() => {
+            "use strict";
+
+            const formulario = document.getElementById("form-ajuste");
+            const botao = document.getElementById("registrar-ajuste");
+            const status = document.getElementById("status-envio");
+
+            let enviando = false;
+
+            formulario.addEventListener("submit", (evento) => {
+                if (enviando) {
+                    evento.preventDefault();
+                    return;
+                }
+
+                enviando = true;
+                botao.disabled = true;
+                botao.textContent = "Registrando...";
+                status.textContent = "Aguarde o resultado do ajuste.";
+            });
+
+            window.addEventListener("pageshow", () => {
+                enviando = false;
+                botao.disabled = false;
+                botao.textContent = "Registrar ajuste";
+                status.textContent = "";
+            });
+        })();
+    </script>
 </body>
 </html>

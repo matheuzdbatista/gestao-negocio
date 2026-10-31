@@ -1,19 +1,20 @@
+import uuid
 from datetime import date
 from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import F, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from django.core.paginator import Paginator
-from .forms import AjusteEstoqueForm
-from .services import ajustar_estoque
 
 from .forms import (
+    AjusteEstoqueForm,
     CancelamentoVendaForm,
     ClienteForm,
     EntradaEstoqueForm,
@@ -34,7 +35,9 @@ from .models import (
     Produto,
     Venda,
 )
+from .operacoes import executar_operacao_unica
 from .services import (
+    ajustar_estoque,
     cancelar_venda_com_estoque,
     confirmar_venda_com_estoque,
     registrar_recebimento_venda,
@@ -842,6 +845,8 @@ def entradas_estoque(request):
             "entradas": entradas,
         },
     )
+
+
 @staff_member_required
 def historico_estoque(request):
     busca = request.GET.get("busca", "").strip()
@@ -880,11 +885,14 @@ def historico_estoque(request):
     ):
         erro = "A data inicial não pode ser posterior à data final."
 
-    movimentos = MovimentoEstoque.objects.select_related(
-        "produto",
-        "venda",
-        "usuario",
-    ).order_by("-data", "-id")
+    movimentos = (
+        MovimentoEstoque.objects.select_related(
+            "produto",
+            "venda",
+            "usuario",
+        )
+        .order_by("-data", "-id")
+    )
 
     if busca:
         movimentos = movimentos.filter(
@@ -935,42 +943,84 @@ def historico_estoque(request):
             "filtros_url": filtros.urlencode(),
         },
     )
+
+
 @staff_member_required
 def ajuste_estoque(request):
     if request.method == "POST":
         form = AjusteEstoqueForm(request.POST)
+        chave_operacao = request.POST.get(
+            "chave_operacao",
+            "",
+        )
 
         if form.is_valid():
-            try:
-                movimento = ajustar_estoque(
-                    produto_id=form.cleaned_data["produto"].pk,
-                    tipo=form.cleaned_data["tipo"],
-                    quantidade=form.cleaned_data["quantidade"],
-                    motivo=form.cleaned_data["motivo"],
+            dados = {
+                "produto_id": form.cleaned_data["produto"].pk,
+                "tipo": form.cleaned_data["tipo"],
+                "quantidade": form.cleaned_data["quantidade"],
+                "motivo": form.cleaned_data["motivo"],
+            }
+
+            def executar():
+                ajustar_estoque(
+                    produto_id=dados["produto_id"],
+                    tipo=dados["tipo"],
+                    quantidade=dados["quantidade"],
+                    motivo=dados["motivo"],
                     usuario=request.user,
                 )
+
+                return reverse("lista_produtos")
+
+            try:
+                destino, criada = executar_operacao_unica(
+                    chave=chave_operacao,
+                    usuario=request.user,
+                    acao="ajuste_estoque",
+                    dados=dados,
+                    executar=executar,
+                )
             except ValueError as erro:
-                form.add_error(None, str(erro))
+                form.add_error(
+                    None,
+                    str(erro),
+                )
             except ValidationError as erro:
                 form.add_error(
                     None,
                     " ".join(erro.messages),
                 )
             else:
-                messages.success(
-                    request,
-                    "Ajuste registrado com sucesso. "
-                    f"Estoque atual: {movimento.saldo_apos}.",
-                )
+                if criada:
+                    messages.success(
+                        request,
+                        "Ajuste registrado com sucesso.",
+                    )
+                else:
+                    messages.info(
+                        request,
+                        "Este ajuste já foi processado. "
+                        "Nenhuma alteração foi repetida.",
+                    )
 
-                return redirect("lista_produtos")
+                return redirect(destino)
+
+        try:
+            chave_operacao = str(
+                uuid.UUID(chave_operacao)
+            )
+        except (ValueError, TypeError, AttributeError):
+            chave_operacao = str(uuid.uuid4())
     else:
         form = AjusteEstoqueForm()
+        chave_operacao = str(uuid.uuid4())
 
     return render(
         request,
         "gestao/ajuste_estoque.html",
         {
             "form": form,
+            "chave_operacao": chave_operacao,
         },
     )

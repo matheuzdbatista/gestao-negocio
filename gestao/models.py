@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
+import uuid
 
 
 class Produto(models.Model):
@@ -264,3 +265,40 @@ class MovimentoEstoque(models.Model):
             f"{self.produto.nome}: "
             f"{sinal}{self.quantidade}"
         )
+class OperacaoFormulario(models.Model):
+    chave = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+    )
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="operacoes_formulario",
+    )
+
+    acao = models.CharField(
+        max_length=50,
+    )
+
+    assinatura_dados = models.CharField(
+        max_length=64,
+    )
+
+    destino = models.CharField(
+        max_length=250,
+        blank=True,
+    )
+
+    criada_em = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        verbose_name = "operação de formulário"
+        verbose_name_plural = "operações de formulário"
+        ordering = ["-criada_em", "-id"]
+
+    def __str__(self):
+        return f"{self.acao}: {self.chave}"
