@@ -3,7 +3,7 @@
 Sistema web para controle de vendas, estoque, clientes e movimentos de caixa,
 com dashboard e filtro por período.
 
-Projeto desenvolvido para o Tema 6 — Sistema de Gestão para Pequenos Negócios.
+Sistema de Gestão para Pequenos Negócios.
 
 ## Funcionalidades
 
