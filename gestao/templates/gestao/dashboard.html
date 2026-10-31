@@ -210,7 +210,7 @@
         <p class="descricao">{{ periodo }}</p>
 
         <nav aria-label="Menu principal">
-            <a href="{% url 'admin:gestao_produto_changelist' %}">
+            <a href="{% url 'lista_produtos' %}">
                 Produtos
             </a>
 
@@ -239,6 +239,7 @@
         >
             <div class="campo">
                 <label for="inicio">Data inicial</label>
+
                 <input
                     type="date"
                     id="inicio"
@@ -249,6 +250,7 @@
 
             <div class="campo">
                 <label for="fim">Data final</label>
+
                 <input
                     type="date"
                     id="fim"

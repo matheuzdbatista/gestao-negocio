@@ -2,8 +2,9 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib.admin.views.decorators import staff_member_required
-from django.db.models import F
-from django.shortcuts import render
+from django.db.models import F, Q
+from django.shortcuts import render, redirect
+from .forms import ProdutoForm
 
 from .models import Cliente, Produto, Venda, ItemVenda, MovimentoCaixa
 
@@ -41,6 +42,7 @@ def dashboard(request):
         if fim:
             vendas = vendas.filter(data__date__lte=fim)
             movimentos = movimentos.filter(data__lte=fim)
+
     else:
         vendas = vendas.none()
         movimentos = movimentos.none()
@@ -56,14 +58,20 @@ def dashboard(request):
     )
 
     entradas = sum(
-        movimentos.filter(tipo="entrada").values_list("valor", flat=True),
+        movimentos.filter(
+            tipo="entrada"
+        ).values_list("valor", flat=True),
         Decimal("0.00"),
     )
 
     saidas = sum(
-        movimentos.filter(tipo="saida").values_list("valor", flat=True),
+        movimentos.filter(
+            tipo="saida"
+        ).values_list("valor", flat=True),
         Decimal("0.00"),
     )
+
+    saldo = entradas - saidas
 
     estoque_baixo = Produto.objects.filter(
         estoque__lte=F("estoque_minimo")
@@ -71,15 +79,19 @@ def dashboard(request):
 
     if erro:
         periodo = "Período inválido — corrija as datas"
+
     elif inicio and fim:
         periodo = (
             f"De {inicio.strftime('%d/%m/%Y')} "
             f"até {fim.strftime('%d/%m/%Y')}"
         )
+
     elif inicio:
         periodo = f"A partir de {inicio.strftime('%d/%m/%Y')}"
+
     elif fim:
         periodo = f"Até {fim.strftime('%d/%m/%Y')}"
+
     else:
         periodo = "Todo o período"
 
@@ -91,7 +103,7 @@ def dashboard(request):
         "estoque_baixo": estoque_baixo,
         "entradas": entradas,
         "saidas": saidas,
-        "saldo": entradas - saidas,
+        "saldo": saldo,
         "inicio": inicio_texto,
         "fim": fim_texto,
         "periodo": periodo,
@@ -99,3 +111,40 @@ def dashboard(request):
     }
 
     return render(request, "gestao/dashboard.html", contexto)
+
+
+@staff_member_required
+def lista_produtos(request):
+    busca = request.GET.get("busca", "").strip()
+
+    produtos = Produto.objects.all().order_by("nome", "id")
+
+    if busca:
+        produtos = produtos.filter(
+            Q(nome__icontains=busca)
+            | Q(codigo__icontains=busca)
+        )
+
+    contexto = {
+        "produtos": produtos,
+        "busca": busca,
+    }
+
+    return render(request, "gestao/produtos.html", contexto)
+@staff_member_required
+def novo_produto(request):
+    if request.method == "POST":
+        form = ProdutoForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+            return redirect("lista_produtos")
+
+    else:
+        form = ProdutoForm()
+
+    return render(
+        request,
+        "gestao/produto_form.html",
+        {"form": form},
+    )
