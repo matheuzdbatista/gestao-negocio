@@ -374,3 +374,84 @@ def registrar_reembolso_venda(
         movimento.save()
 
         return movimento
+def ajustar_estoque(
+    produto_id,
+    tipo,
+    quantidade,
+    motivo,
+    usuario,
+):
+    if tipo not in ("entrada", "saida"):
+        raise ValueError("Selecione um tipo de ajuste válido.")
+
+    if (
+        isinstance(quantidade, bool)
+        or not isinstance(quantidade, int)
+        or quantidade < 1
+        or quantidade > 2147483647
+    ):
+        raise ValueError(
+            "Informe uma quantidade inteira entre 1 e 2147483647."
+        )
+
+    motivo = motivo.strip()
+
+    if not motivo:
+        raise ValueError("Informe o motivo do ajuste.")
+
+    if len(motivo) > 200:
+        raise ValueError(
+            "O motivo deve ter até 200 caracteres."
+        )
+
+    with transaction.atomic():
+        produtos = Produto.objects.filter(pk=produto_id)
+
+        if tipo == "saida":
+            alterados = produtos.filter(
+                estoque__gte=quantidade,
+            ).update(
+                estoque=F("estoque") - quantidade,
+            )
+        else:
+            alterados = produtos.filter(
+                estoque__lte=2147483647 - quantidade,
+            ).update(
+                estoque=F("estoque") + quantidade,
+            )
+
+        if not alterados:
+            produto = Produto.objects.filter(
+                pk=produto_id,
+            ).first()
+
+            if produto is None:
+                raise ValueError("Produto não encontrado.")
+
+            if tipo == "saida":
+                raise ValueError(
+                    "Estoque insuficiente. "
+                    f"Quantidade disponível: {produto.estoque}."
+                )
+
+            raise ValueError(
+                "O ajuste ultrapassa o limite permitido "
+                "para o estoque."
+            )
+
+        produto = Produto.objects.get(pk=produto_id)
+
+        movimento = MovimentoEstoque(
+            produto=produto,
+            tipo=tipo,
+            origem="ajuste",
+            quantidade=quantidade,
+            saldo_apos=produto.estoque,
+            motivo=motivo,
+            usuario=usuario,
+        )
+
+        movimento.full_clean()
+        movimento.save()
+
+        return movimento

@@ -160,6 +160,12 @@
             color: #92400e;
         }
 
+        .mensagem.info {
+            border-color: #93c5fd;
+            background: #eff6ff;
+            color: #1e40af;
+        }
+
         .ajuda {
             margin-top: 20px;
             margin-bottom: 0;
@@ -194,7 +200,8 @@
         <h1>Produtos</h1>
 
         <p class="descricao">
-            Consulte preços, acompanhe o estoque e registre reposições.
+            Consulte preços, acompanhe o estoque e registre reposições
+            ou ajustes.
         </p>
 
         <nav class="navegacao" aria-label="Navegação de produtos">
@@ -204,6 +211,13 @@
 
             <a href="{% url 'entradas_estoque' %}" class="botao">
                 Entrada de estoque
+            </a>
+
+            <a
+                href="{% url 'ajuste_estoque' %}"
+                class="botao secundario"
+            >
+                Ajustar estoque
             </a>
 
             <a
@@ -324,8 +338,8 @@
                 <p class="ajuda">
                     Produtos com quantidade igual ou inferior ao mínimo
                     precisam de atenção. Use Entrada de estoque para
-                    registrar reposições e Histórico de estoque para
-                    consultar as movimentações.
+                    reposições, Ajustar estoque para perdas e correções,
+                    e Histórico de estoque para consultar os registros.
                 </p>
             {% else %}
                 {% if busca %}

@@ -340,3 +340,50 @@ class ReembolsoVendaForm(forms.Form):
             }
         ),
     )
+class AjusteEstoqueForm(forms.Form):
+    produto = forms.ModelChoiceField(
+        queryset=Produto.objects.all(),
+        label="Produto",
+        empty_label="Selecione um produto",
+    )
+
+    tipo = forms.ChoiceField(
+        label="Tipo de ajuste",
+        choices=[
+            ("saida", "Saída — perda ou avaria"),
+            ("entrada", "Entrada — correção de contagem"),
+        ],
+    )
+
+    quantidade = forms.IntegerField(
+        label="Quantidade do ajuste",
+        min_value=1,
+        max_value=2147483647,
+        widget=forms.NumberInput(
+            attrs={
+                "min": "1",
+                "step": "1",
+            }
+        ),
+    )
+
+    motivo = forms.CharField(
+        label="Motivo do ajuste",
+        max_length=200,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "placeholder": (
+                    "Ex.: 2 unidades danificadas "
+                    "durante o armazenamento"
+                ),
+            }
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["produto"].queryset = (
+            Produto.objects.order_by("nome", "id")
+        )

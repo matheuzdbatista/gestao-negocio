@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path
 
 from gestao.views import (
+    ajuste_estoque,
     cancelar_venda,
     confirmar_venda,
     dashboard,
@@ -118,5 +119,10 @@ urlpatterns = [
         "estoque/historico/",
         historico_estoque,
         name="historico_estoque",
+    ),
+    path(
+        "estoque/ajuste/",
+        ajuste_estoque,
+        name="ajuste_estoque",
     ),
 ]

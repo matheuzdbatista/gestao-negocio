@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
+from .forms import AjusteEstoqueForm
+from .services import ajustar_estoque
 
 from .forms import (
     CancelamentoVendaForm,
@@ -931,5 +933,44 @@ def historico_estoque(request):
             "tipos": MovimentoEstoque.TIPOS,
             "origens": MovimentoEstoque.ORIGENS,
             "filtros_url": filtros.urlencode(),
+        },
+    )
+@staff_member_required
+def ajuste_estoque(request):
+    if request.method == "POST":
+        form = AjusteEstoqueForm(request.POST)
+
+        if form.is_valid():
+            try:
+                movimento = ajustar_estoque(
+                    produto_id=form.cleaned_data["produto"].pk,
+                    tipo=form.cleaned_data["tipo"],
+                    quantidade=form.cleaned_data["quantidade"],
+                    motivo=form.cleaned_data["motivo"],
+                    usuario=request.user,
+                )
+            except ValueError as erro:
+                form.add_error(None, str(erro))
+            except ValidationError as erro:
+                form.add_error(
+                    None,
+                    " ".join(erro.messages),
+                )
+            else:
+                messages.success(
+                    request,
+                    "Ajuste registrado com sucesso. "
+                    f"Estoque atual: {movimento.saldo_apos}.",
+                )
+
+                return redirect("lista_produtos")
+    else:
+        form = AjusteEstoqueForm()
+
+    return render(
+        request,
+        "gestao/ajuste_estoque.html",
+        {
+            "form": form,
         },
     )
