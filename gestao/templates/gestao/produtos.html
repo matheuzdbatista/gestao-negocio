@@ -199,6 +199,7 @@
                                 <th scope="col">Estoque</th>
                                 <th scope="col">Mínimo</th>
                                 <th scope="col">Situação</th>
+                                <th scope="col">Ações</th>
                             </tr>
                         </thead>
 
@@ -225,6 +226,16 @@
                                         {% else %}
                                             Normal
                                         {% endif %}
+                                    </td>
+
+                                    <td>
+                                        <a
+                                            class="botao"
+                                            href="{% url 'editar_produto' produto.pk %}"
+                                            aria-label="Editar {{ produto.nome }}"
+                                        >
+                                            Editar
+                                        </a>
                                     </td>
                                 </tr>
                             {% endfor %}

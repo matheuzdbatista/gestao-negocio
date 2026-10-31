@@ -26,8 +26,12 @@ class ProdutoForm(forms.ModelForm):
             "preco": forms.NumberInput(
                 attrs={"min": "0.01", "step": "0.01"}
             ),
-            "estoque": forms.NumberInput(attrs={"min": "0"}),
-            "estoque_minimo": forms.NumberInput(attrs={"min": "0"}),
+            "estoque": forms.NumberInput(
+                attrs={"min": "0"}
+            ),
+            "estoque_minimo": forms.NumberInput(
+                attrs={"min": "0"}
+            ),
         }
 
     def clean_preco(self):
@@ -39,3 +43,13 @@ class ProdutoForm(forms.ModelForm):
             )
 
         return preco
+
+
+class ProdutoEdicaoForm(ProdutoForm):
+    class Meta(ProdutoForm.Meta):
+        fields = [
+            "nome",
+            "codigo",
+            "preco",
+            "estoque_minimo",
+        ]

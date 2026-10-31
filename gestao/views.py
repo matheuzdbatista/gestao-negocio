@@ -3,8 +3,8 @@ from decimal import Decimal
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import F, Q
-from django.shortcuts import render, redirect
-from .forms import ProdutoForm
+from django.shortcuts import render, redirect, get_object_or_404
+from .forms import ProdutoForm, ProdutoEdicaoForm
 
 from .models import Cliente, Produto, Venda, ItemVenda, MovimentoCaixa
 
@@ -147,4 +147,26 @@ def novo_produto(request):
         request,
         "gestao/produto_form.html",
         {"form": form},
+    )
+@staff_member_required
+def editar_produto(request, pk):
+    produto = get_object_or_404(Produto, pk=pk)
+
+    if request.method == "POST":
+        form = ProdutoEdicaoForm(request.POST, instance=produto)
+
+        if form.is_valid():
+            form.save()
+            return redirect("lista_produtos")
+
+    else:
+        form = ProdutoEdicaoForm(instance=produto)
+
+    return render(
+        request,
+        "gestao/produto_form.html",
+        {
+            "form": form,
+            "editando": True,
+        },
     )
