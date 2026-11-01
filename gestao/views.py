@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from .operacoes import executar_operacao_unica
 
 from .forms import (
     AjusteEstoqueForm,
@@ -411,24 +412,89 @@ def nova_venda(request):
             prefix="itens",
         )
 
+        chave_operacao = request.POST.get(
+            "chave_operacao", ""
+        )
+
         form_valido = form.is_valid()
         formset_valido = formset.is_valid()
 
         if form_valido and formset_valido:
-            with transaction.atomic():
-                venda = form.save()
-                formset.instance = venda
+
+            # Inclui os dados do formulário e dos itens.
+            # Os valores são serializados de forma consistente.
+            dados = {
+                "cliente_id": (
+                    form.cleaned_data["cliente"].pk
+                    if form.cleaned_data["cliente"]
+                    else None
+                ),
+                "itens": [
+                    {
+                        "produto_id": item["produto"].pk,
+                        "quantidade": item["quantidade"],
+                        "preco_unitario": str(
+                            item["preco_unitario"]
+                        ),
+                    }
+                    for item in formset.cleaned_data
+                    if item
+                    and not item.get("DELETE", False)
+                ],
+            }
+
+            def executar():
+                venda_salva = form.save()
+
+                formset.instance = venda_salva
                 formset.save()
 
-            messages.success(
-                request,
-                "Venda cadastrada. Confirme para baixar o estoque.",
-            )
+                return reverse(
+                    "detalhe_venda",
+                    kwargs={"pk": venda_salva.pk},
+                )
 
-            return redirect(
-                "detalhe_venda",
-                pk=venda.pk,
+            try:
+                destino, criada = executar_operacao_unica(
+                    chave=chave_operacao,
+                    usuario=request.user,
+                    acao="nova_venda",
+                    dados=dados,
+                    executar=executar,
+                )
+
+            except (ValueError, ValidationError) as erro:
+                if isinstance(erro, ValidationError):
+                    mensagem = " ".join(erro.messages)
+                else:
+                    mensagem = str(erro)
+
+                form.add_error(None, mensagem)
+
+            else:
+                if criada:
+                    messages.success(
+                        request,
+                        "Venda cadastrada. "
+                        "Confirme para baixar o estoque.",
+                    )
+                else:
+                    messages.info(
+                        request,
+                        "Esta venda já foi cadastrada. "
+                        "Nenhuma venda duplicada foi criada.",
+                    )
+
+                return redirect(destino)
+
+        # Preserva a chave quando houver erros no formulário.
+        try:
+            chave_operacao = str(
+                uuid.UUID(chave_operacao)
             )
+        except (ValueError, TypeError, AttributeError):
+            chave_operacao = str(uuid.uuid4())
+
     else:
         form = VendaForm(instance=venda)
 
@@ -436,6 +502,8 @@ def nova_venda(request):
             instance=venda,
             prefix="itens",
         )
+
+        chave_operacao = str(uuid.uuid4())
 
     produtos = Produto.objects.order_by("nome", "id")
 
@@ -451,6 +519,7 @@ def nova_venda(request):
             "form": form,
             "formset": formset,
             "precos_produtos": precos_produtos,
+            "chave_operacao": chave_operacao,
         },
     )
 
@@ -477,6 +546,28 @@ def detalhe_venda(request, pk):
         }
     )
 
+    chave_recebimento = str(uuid.uuid4())
+    chave_reembolso = str(uuid.uuid4())
+
+
+    if request.method == "POST":
+        chave_enviada = request.POST.get("chave_operacao", "")
+
+        try:
+            chave_enviada = str(uuid.UUID(chave_enviada))
+        except (ValueError, TypeError, AttributeError):
+            # deixa a chave inválida para que a operação \/
+            # dê rejeite em vez de criar outra automaticamente
+            pass
+
+        acao_enviada = request.POST.get("acao", "receber")
+
+        if acao_enviada == "receber":
+            chave_recebimento = chave_enviada
+
+        elif acao_enviada == "reembolsar":
+            chave_reembolso = chave_enviada
+
     if request.method == "POST":
         acao = request.POST.get("acao", "receber")
 
@@ -485,10 +576,34 @@ def detalhe_venda(request, pk):
 
             if form_recebimento.is_valid():
                 try:
-                    registrar_recebimento_venda(
-                        venda_id=venda.pk,
-                        valor=form_recebimento.cleaned_data["valor"],
-                        data=form_recebimento.cleaned_data["data"],
+                    dados = {
+                        "venda_id": venda.pk,
+                        "valor": str(
+                            form_recebimento.cleaned_data["valor"]
+                        ),
+                        "data": (
+                            form_recebimento.cleaned_data["data"].isoformat()
+                        ),
+                    }
+
+                    def executar_recebimento():
+                        registrar_recebimento_venda(
+                            venda_id=venda.pk,
+                            valor=form_recebimento.cleaned_data["valor"],
+                            data=form_recebimento.cleaned_data["data"],
+                        )
+
+                        return reverse(
+                            "detalhe_venda",
+                            kwargs={"pk": venda.pk},
+                        )
+
+                    destino, criada = executar_operacao_unica(
+                        chave=chave_recebimento,
+                        usuario=request.user,
+                        acao="recebimento_venda",
+                        dados=dados,
+                        executar=executar_recebimento,
                     )
                 except ValueError as erro:
                     form_recebimento.add_error(
@@ -501,26 +616,55 @@ def detalhe_venda(request, pk):
                         " ".join(erro.messages),
                     )
                 else:
-                    messages.success(
-                        request,
-                        "Recebimento registrado no caixa com sucesso.",
-                    )
+                    if criada:
+                        messages.success(
+                            request,
+                            "Recebimento registrado no caixa com sucesso.",
+                        )
+                    else:
+                        messages.info(
+                            request,
+                            "Este recebimento já foi registrado. "
+                            "Nenhum lançamento duplicado foi criado.",
+                        )
 
-                    return redirect(
-                        "detalhe_venda",
-                        pk=venda.pk,
-                    )
+                    return redirect(destino)
 
         elif acao == "reembolsar":
             form_reembolso = ReembolsoVendaForm(request.POST)
 
             if form_reembolso.is_valid():
                 try:
-                    registrar_reembolso_venda(
-                        venda_id=venda.pk,
-                        valor=form_reembolso.cleaned_data["valor"],
-                        data=form_reembolso.cleaned_data["data"],
-                        motivo=form_reembolso.cleaned_data["motivo"],
+                    dados = {
+                        "venda_id": venda.pk,
+                        "valor": str(
+                            form_reembolso.cleaned_data["valor"]
+                        ),
+                        "data": (
+                            form_reembolso.cleaned_data["data"].isoformat()
+                        ),
+                        "motivo": form_reembolso.cleaned_data["motivo"],
+                    }
+
+                    def executar_reembolso():
+                        registrar_reembolso_venda(
+                            venda_id=venda.pk,
+                            valor=form_reembolso.cleaned_data["valor"],
+                            data=form_reembolso.cleaned_data["data"],
+                            motivo=form_reembolso.cleaned_data["motivo"],
+                        )
+
+                        return reverse(
+                            "detalhe_venda",
+                            kwargs={"pk": venda.pk},
+                        )
+
+                    destino, criada = executar_operacao_unica(
+                        chave=chave_reembolso,
+                        usuario=request.user,
+                        acao="reembolso_venda",
+                        dados=dados,
+                        executar=executar_reembolso,
                     )
                 except ValueError as erro:
                     form_reembolso.add_error(
@@ -533,26 +677,19 @@ def detalhe_venda(request, pk):
                         " ".join(erro.messages),
                     )
                 else:
-                    messages.success(
-                        request,
-                        "Reembolso registrado como saída no caixa.",
-                    )
+                    if criada:
+                        messages.success(
+                            request,
+                            "Reembolso registrado como saída no caixa.",
+                        )
+                    else:
+                        messages.info(
+                            request,
+                            "Este reembolso já foi registrado. "
+                            "Nenhuma saída duplicada foi criada.",
+                        )
 
-                    return redirect(
-                        "detalhe_venda",
-                        pk=venda.pk,
-                    )
-
-        else:
-            messages.error(
-                request,
-                "Ação inválida.",
-            )
-
-            return redirect(
-                "detalhe_venda",
-                pk=venda.pk,
-            )
+                    return redirect(destino)
 
     venda.refresh_from_db()
 
@@ -614,6 +751,8 @@ def detalhe_venda(request, pk):
         request,
         "gestao/venda_detalhe.html",
         {
+            "chave_recebimento": chave_recebimento,
+            "chave_reembolso": chave_reembolso,
             "venda": venda,
             "itens": itens,
             "total": total,
@@ -629,7 +768,6 @@ def detalhe_venda(request, pk):
             "form_reembolso": form_reembolso,
         },
     )
-
 
 @staff_member_required
 @require_POST
@@ -787,20 +925,32 @@ def entradas_estoque(request):
     if request.method == "POST":
         form = EntradaEstoqueForm(request.POST)
 
+        chave_operacao = request.POST.get(
+            "chave_operacao", ""
+        )
+
         if form.is_valid():
-            with transaction.atomic():
+            dados = {
+                "produto_id": form.cleaned_data["produto"].pk,
+                "quantidade": form.cleaned_data["quantidade"],
+                "motivo": form.cleaned_data["motivo"],
+            }
+
+            def executar():
                 entrada = form.save(commit=False)
                 entrada.usuario = request.user
 
                 alterados = Produto.objects.filter(
                     pk=entrada.produto_id,
+                    estoque__lte=2147483647 - entrada.quantidade,
                 ).update(
                     estoque=F("estoque") + entrada.quantidade,
                 )
 
                 if not alterados:
                     raise ValueError(
-                        "O produto informado não foi encontrado."
+                        "Produto não encontrado ou "
+                        "limite de estoque excedido."
                     )
 
                 produto = Produto.objects.get(
@@ -809,7 +959,7 @@ def entradas_estoque(request):
 
                 entrada.save()
 
-                MovimentoEstoque.objects.create(
+                movimento = MovimentoEstoque(
                     produto=produto,
                     tipo="entrada",
                     origem="reposicao",
@@ -819,15 +969,51 @@ def entradas_estoque(request):
                     usuario=request.user,
                 )
 
-            messages.success(
-                request,
-                "Entrada registrada, estoque atualizado "
-                "e histórico salvo.",
-            )
+                movimento.full_clean()
+                movimento.save()
 
-            return redirect("entradas_estoque")
+                return reverse("entradas_estoque")
+
+            try:
+                destino, criada = executar_operacao_unica(
+                    chave=chave_operacao,
+                    usuario=request.user,
+                    acao="entrada_estoque",
+                    dados=dados,
+                    executar=executar,
+                )
+
+            except (ValueError, ValidationError) as erro:
+                if isinstance(erro, ValidationError):
+                    mensagem = " ".join(erro.messages)
+                else:
+                    mensagem = str(erro)
+
+                form.add_error(None, mensagem)
+
+            else:
+                if criada:
+                    messages.success(
+                        request,
+                        "Entrada registrada e estoque atualizado.",
+                    )
+                else:
+                    messages.info(
+                        request,
+                        "Esta entrada já foi processada. "
+                        "O estoque não foi alterado novamente.",
+                    )
+
+                return redirect(destino)
+
+        try:
+            chave_operacao = str(uuid.UUID(chave_operacao))
+        except (ValueError, TypeError, AttributeError):
+            chave_operacao = str(uuid.uuid4())
+
     else:
         form = EntradaEstoqueForm()
+        chave_operacao = str(uuid.uuid4())
 
     entradas = (
         EntradaEstoque.objects.select_related(
@@ -843,10 +1029,9 @@ def entradas_estoque(request):
         {
             "form": form,
             "entradas": entradas,
+            "chave_operacao": chave_operacao,
         },
-    )
-
-
+)
 @staff_member_required
 def historico_estoque(request):
     busca = request.GET.get("busca", "").strip()

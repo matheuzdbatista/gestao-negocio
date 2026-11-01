@@ -199,6 +199,12 @@
         <form method="post" id="form-venda">
             {% csrf_token %}
 
+            <input
+                type="hidden"
+                name="chave_operacao"
+                value="{{ chave_operacao }}"
+            >
+
             {{ formset.management_form }}
 
             {% if form.errors or formset.errors or formset.non_form_errors %}
