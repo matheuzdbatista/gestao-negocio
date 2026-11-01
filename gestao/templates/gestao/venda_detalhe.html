@@ -577,6 +577,12 @@
 
                     <input type="hidden" name="acao" value="receber">
 
+                    <input
+                        type="hidden"
+                        name="chave_operacao"
+                        value="{{ chave_recebimento }}"
+                    >
+
                     <div class="campo">
                         <label for="{{ form_recebimento.valor.id_for_label }}">
                             {{ form_recebimento.valor.label }}
@@ -694,6 +700,11 @@
                             type="hidden"
                             name="acao"
                             value="reembolsar"
+                        >
+                        <input
+                            type="hidden"
+                            name="chave_operacao"
+                            value="{{ chave_reembolso }}"
                         >
 
                         {% for field in form_reembolso %}
