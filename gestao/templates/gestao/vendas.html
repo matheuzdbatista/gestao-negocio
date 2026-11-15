@@ -273,6 +273,13 @@
             >
                 Gerenciar no painel
             </a>
+            <form method="post" action="{% url 'sair' %}">
+                {% csrf_token %}
+
+            <button type="submit" class="botao">
+                Sair do sistema
+            </button>
+        </form>    
         </nav>
 
         <form
@@ -413,7 +420,33 @@
                         </tbody>
                     </table>
                 </div>
+            {% if vendas.has_other_pages %}
+    <nav class="paginacao" aria-label="Paginação">
+        {% if vendas.has_previous %}
+            <a
+                href="?{{ filtros_url }}&page={{ vendas.previous_page_number }}"
+                class="botao secundario"
+            >
+                Anterior
+            </a>
+        {% endif %}
 
+        <span>
+            Página {{ vendas.number }}
+            de {{ vendas.paginator.num_pages }}
+        </span>
+
+        {% if vendas.has_next %}
+            <a
+                href="?{{ filtros_url }}&page={{ vendas.next_page_number }}"
+                class="botao"
+            >
+                Próxima
+            </a>
+        {% endif %}
+    </nav>
+{% endif %}
+            
                 <p class="ajuda">
                     Clique no número da venda ou em Detalhes para consultar
                     os produtos, as quantidades e os preços registrados.

@@ -165,7 +165,19 @@
             background: #eff6ff;
             color: #1e40af;
         }
+        .paginacao {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 24px;
+}
 
+              .paginacao span {
+               font-weight: bold;
+               color: #475569;
+    }
         .ajuda {
             margin-top: 20px;
             margin-bottom: 0;
@@ -237,6 +249,14 @@
             >
                 Gerenciar no painel
             </a>
+            <form method="post" action="{% url 'sair' %}">
+            {% csrf_token %}
+
+            <button type="submit" class="botao">
+                Sair do sistema
+            </button>
+        </form>
+            
         </nav>
 
         <form
@@ -334,7 +354,34 @@
                         </tbody>
                     </table>
                 </div>
+                                {% if produtos.has_other_pages %}
+                    <nav class="paginacao" aria-label="Paginação">
 
+                        {% if produtos.has_previous %}
+                            <a
+                                href="?{{ filtros_url }}&page={{ produtos.previous_page_number }}"
+                                class="botao secundario"
+                            >
+                                Anterior
+                            </a>
+                        {% endif %}
+
+                        <span>
+                            Página {{ produtos.number }}
+                            de {{ produtos.paginator.num_pages }}
+                        </span>
+
+                        {% if produtos.has_next %}
+                            <a
+                                href="?{{ filtros_url }}&page={{ produtos.next_page_number }}"
+                                class="botao"
+                            >
+                                Próxima
+                            </a>
+                        {% endif %}
+
+                    </nav>
+                {% endif %}
                 <p class="ajuda">
                     Produtos com quantidade igual ou inferior ao mínimo
                     precisam de atenção. Use Entrada de estoque para

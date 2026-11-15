@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.urls import path
 
 from gestao.views import (
+    LoginSistemaView,
+    sair_sistema,
     ajuste_estoque,
     cancelar_venda,
     confirmar_venda,
@@ -23,6 +25,18 @@ from gestao.views import (
 
 
 urlpatterns = [
+        # Login e saída do sistema
+    path(
+        "login/",
+        LoginSistemaView.as_view(),
+        name="login",
+    ),
+    path(
+        "sair/",
+        sair_sistema,
+        name="sair",
+    ),
+    
     # Painel administrativo
     path(
         "admin/",

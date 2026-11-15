@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib import messages
+from django.contrib.auth.views import LoginView
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
@@ -44,8 +45,23 @@ from .services import (
     registrar_recebimento_venda,
     registrar_reembolso_venda,
 )
+from .services import (
+    ajustar_estoque,
+    cancelar_venda_com_estoque,
+    confirmar_venda_com_estoque,
+    registrar_recebimento_venda,
+    registrar_reembolso_venda,
+)
 
+class LoginSistemaView(LoginView):
+    template_name = "gestao/login.html"
+    redirect_authenticated_user = False
 
+@require_POST
+def sair_sistema(request):
+    logout(request)
+    return redirect("login")
+    
 @staff_member_required
 def dashboard(request):
     inicio = request.GET.get("inicio", "").strip()
@@ -174,12 +190,23 @@ def lista_produtos(request):
 
     produtos = produtos.order_by("nome", "id")
 
-    return render(
-        request,
-        "gestao/produtos.html",
-        {
-            "produtos": produtos,
-            "busca": busca,
+    paginador = Paginator(produtos, 10)
+
+    pagina = paginador.get_page(
+    request.GET.get("page")
+  )
+
+    filtros = request.GET.copy()
+    filtros.pop("page", None)
+return render(
+    request,
+    "gestao/produtos.html",
+    {
+        "produtos": pagina,
+        "busca": busca,
+        "pagina": pagina,
+        "total_produtos": paginador.count,
+        "filtros_url": filtros.urlencode(),
         },
     )
 
@@ -279,13 +306,20 @@ def lista_clientes(request):
         )
 
     clientes = clientes.order_by("nome", "id")
+       paginador = Paginator(clientes, 10)
+    pagina = paginador.get_page(request.GET.get("page"))
 
+    filtros = request.GET.copy()
+    filtros.pop("page", None)
     return render(
         request,
         "gestao/clientes.html",
         {
             "clientes": clientes,
             "busca": busca,
+            "pagina": pagina,
+            "total_clientes": paginador.count,
+            "filtros_url": filtros.urlencode(),
         },
     )
 
@@ -385,13 +419,20 @@ def lista_vendas(request):
             ),
             Decimal("0.00"),
         )
+        paginador = Paginator(vendas, 10)
+    pagina = paginador.get_page(request.GET.get("page"))
 
+    filtros = request.GET.copy()
+    filtros.pop("page", None)
     return render(
         request,
-        "gestao/vendas.html",
+       "gestao/vendas.html",
         {
             "vendas": vendas,
             "busca": busca,
+             "pagina": pagina,
+            "total_vendas": paginador.count,
+            "filtros_url": filtros.urlencode(),
         },
     )
 
@@ -875,7 +916,12 @@ def lista_caixa(request):
         ).values_list("valor", flat=True),
         Decimal("0.00"),
     )
+    paginador = Paginator(movimentos, 10)
+    pagina = paginador.get_page(request.GET.get("page"))
 
+    filtros = request.GET.copy()
+    filtros.pop("page", None)
+    
     return render(
         request,
         "gestao/caixa.html",
@@ -886,6 +932,9 @@ def lista_caixa(request):
             "entradas": entradas,
             "saidas": saidas,
             "saldo": entradas - saidas,
+            "pagina": pagina,
+            "total_movimentos": paginador.count,
+            "filtros_url": filtros.urlencode(),
         },
     )
 
